@@ -21,10 +21,18 @@ until /usr/local/bin/mc alias set local http://127.0.0.1:9000 "${MINIO_ROOT_USER
 done
 
 echo "[init] MinIO is ready. Ensuring bucket exists and is public-read..."
-# Create bucket if missing
-/usr/local/bin/mc mb -p local/"${S3_BUCKET:-bucket}" || true
-# Enable anonymous download (public-read)
-/usr/local/bin/mc anonymous set download local/"${S3_BUCKET:-bucket}" || true
+# Create multiple buckets if S3_BUCKETS is set (comma-separated)
+if [ -n "${S3_BUCKETS:-}" ]; then
+  IFS=',' read -r -a BUCKETS <<< "${S3_BUCKETS}"
+  for b in "${BUCKETS[@]}"; do
+    b="$(echo "$b" | xargs)"  # trim
+    [ -z "$b" ] && continue
+    /usr/local/bin/mc mb -p "local/$b" || true
+    if [ -n "${MINIO_PUBLIC:-}" ]; then
+      /usr/local/bin/mc anonymous set download "local/$b" || true
+    fi
+  done
+fi
 
 # Show buckets for visibility
 /usr/local/bin/mc ls local || true

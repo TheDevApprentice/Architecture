@@ -12,8 +12,6 @@
  
  # Démarrer Redis avec AOF activé (appendonly yes)
  # Vous pouvez ajuster la politique d'AOF selon vos besoins (appendfsync everysec par défaut)
- CMD ["redis-server", "--appendonly", "yes"]
- 
- # Healthcheck basique: ping le serveur Redis
- HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-   CMD redis-cli ping | grep -q PONG || exit 1
+ # Si la variable d'environnement REDIS_PASSWORD est définie, on ajoute --requirepass dynamiquement.
+ ENV REDIS_PASSWORD=
+ CMD ["sh","-lc","exec redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]

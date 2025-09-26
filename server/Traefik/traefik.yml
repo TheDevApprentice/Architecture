@@ -1,0 +1,28 @@
+api:
+  dashboard: false
+  insecure: false
+
+log:
+  level: DEBUG
+
+providers:
+  docker:
+    exposedByDefault: false
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  le:
+    acme:
+      tlsChallenge: true
+      email: "menuwebservice@gmail.com"   # make this env-overridable if needed
+      storage: "/letsencrypt/acme.json"

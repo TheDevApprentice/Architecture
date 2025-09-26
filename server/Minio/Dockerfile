@@ -13,7 +13,13 @@ COPY init.sh /usr/local/bin/minio-entrypoint.sh
 RUN chmod +x /usr/local/bin/minio-entrypoint.sh
 
 # Default environment (can be overridden by compose)
-ENV S3_BUCKET=bucket
+
+# ENV MINIO_ROOT_USER=admin
+# ENV MINIO_ROOT_PASSWORD=adminadmin123
+# ENV S3_BUCKET=bucket
+# ENV S3_BUCKETS=bucket1,bucket2
+# ENV MINIO_PUBLIC=true
+
 
 # Expose ports (documentary; compose will map)
 EXPOSE 9000 9001
