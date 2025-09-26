@@ -1,0 +1,24 @@
+# Primary MariaDB configuration for replication
+[mysqld]
+# Unique server ID
+server-id=1
+
+# Enable binary logging for replication
+log_bin=mysqld-bin
+binlog_format=mixed
+binlog_row_image=FULL
+binlog_checksum=CRC32
+
+# GTID-based replication (MariaDB)
+gtid_strict_mode=ON
+log_slave_updates=ON
+gtid_domain_id=1
+
+# Reasonable durability for dev/prod
+sync_binlog=1
+innodb_flush_log_at_trx_commit=1
+expire_logs_days=7
+
+# Networking
+bind-address=0.0.0.0
+skip-name-resolve

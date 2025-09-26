@@ -1,0 +1,111 @@
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/services
+
+# - menuwebservice.com:
+    # - menuwebservice.com:
+    #     href: https://menuwebservice.com
+    #     description: Domain Site
+    #     # server: my-docker
+    #     # container: none
+    #     icon: https://cdn3.iconfinder.com/data/icons/web-and-mobile-colored-icons-vol-2/128/53-512.png
+
+- Web:
+    - personnal website:
+        href: https://menuwebservice.com
+        description: Prod MeetSporty Website
+        server: my-docker
+        icon: https://www.svgrepo.com/show/374167/vite.svg
+        container: meetsporty
+        showStats: true
+        siteMonitor: https://menuwebservice.com
+    - meetsporty.fr:
+        href: https://front.menuwebservice.com
+        description: Prod MeetSporty Website
+        server: my-docker
+        icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
+        container: meetsporty
+        showStats: true
+        siteMonitor: https://front.menuwebservice.com
+    - api.meetsporty.fr:
+        href: https://api.menuwebservice.com
+        description: Prod MeetSporty API
+        # server: my-docker
+        icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
+        # container: none
+        # showStats: true
+        # siteMonitor: https://meetsporty.fr
+    - mobile.meetsporty.fr:
+        href: https://menuwebservice.com/application.apk
+        description: "MeetSporty Mobile App - APK Android"
+        # server: my-docker
+        icon: https://static-00.iconduck.com/assets.00/expo-icon-512x462-3a87htea.png
+        # container: none
+        # showStats: true
+        # siteMonitor: https://meetsporty.fr
+
+- Services:
+    - Service Gitlab:
+        href: https://gitlab.menuwebservice.com
+        description: GitLab CI/CD
+        server: my-docker
+        container: gitlab
+        icon: gitlab.png
+        # siteMonitor: https://gitlab.menuwebservice.com
+        showStats: true
+
+    - Service mail:
+        href: https://maillab.menuwebservice.com
+        description: Mail Service
+        server: my-docker
+        container: roundcube
+        icon: https://djeqr6to3dedg.cloudfront.net/repo-logos/mailserver/docker-mailserver/live/logo-1708530292498.png
+        # siteMonitor: https://menuwebservice.com
+        showStats: true
+
+    - Service Maria Db Server:
+        description: Serveur MariaDb
+        server: my-docker
+        container: mariadb_server
+        icon: https://cdn.worldvectorlogo.com/logos/mariadb.svg
+        showStats: true
+
+    - Service DataVault:
+        href: https://locker.menuwebservice.com
+        description: Serveur DataVault
+        server: my-docker
+        container: minio-server
+        icon: https://cdn.worldvectorlogo.com/logos/minio-1.svg
+        showStats: true
+- Management:
+    - Google Calendar:
+        href: https://calendar.google.com/calendar/u/2/r
+        description: MenuWebService calendar
+        icon: https://cdn-icons-png.flaticon.com/512/5968/5968499.png
+    - Zervant:
+        href: https://secure.zervant.com/login
+        description: Accounting service
+        icon: https://seekvectorlogo.com/wp-content/uploads/2019/07/zervant-vector-logo-small.png
+    - Confluence:
+        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        description: Documentation service
+        icon: https://www.svgrepo.com/show/373525/confluence.svg
+
+- External Documentation:
+    - Ubuntu:
+        href: https://calendar.google.com/calendar/u/2/r
+        icon: https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/UbuntuCoF.svg/1200px-UbuntuCoF.svg.png
+    - Docker:
+        href: https://secure.zervant.com/login
+        icon: https://www.svgrepo.com/show/331370/docker.svg
+    - Nuxt:
+        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
+    - Nuxt-Icon:
+        href: https://nuxt.com/modules/icons
+        icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
+    - CSharp:
+        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
+    - Rust:
+        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        icon: https://www.svgrepo.com/show/376347/rust.svg

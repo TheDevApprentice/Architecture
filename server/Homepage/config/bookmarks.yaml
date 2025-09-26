@@ -1,0 +1,25 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/bookmarks
+
+- Developer:
+    - Github:
+        - abbr: GH
+          href: https://github.com/TheDevApprentice
+
+    - LeetCode:
+        - abbr: LC
+          href: https://leetcode.com/u/TheDevApprentice/
+
+- Social:
+    - Linkedin:
+        - abbr: LK
+          href: https://www.linkedin.com/in/hugo-abric/
+    - Instagram:
+        - abbr: IS
+          href: https://www.instagram.com/lesvoyagesdezou/
+
+- Entertainment:
+    - Twitch:
+        - abbr: TW
+          href: https://www.twitch.tv/unapprentidev

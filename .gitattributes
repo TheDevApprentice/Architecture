@@ -1,0 +1,21 @@
+# Enforce LF for shell and config scripts to avoid /usr/bin/env 'bash\r' errors in containers
+*.sh text eol=lf
+server/MariaDB/GaleraNode/galera-entrypoint.sh text eol=lf
+server/Minio/init.sh text eol=lf
+
+# Optional: ensure SQL and conf files use LF as well
+*.sql text eol=lf
+*.cnf text eol=lf
+*.conf text eol=lf
+
+# Keep images/binaries untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.jar binary

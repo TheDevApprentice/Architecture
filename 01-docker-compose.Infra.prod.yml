@@ -1,0 +1,165 @@
+services:
+  # Reverse proxy / gateway (Traefik)
+  traefik:
+    image: traefik:v2.11
+    command:
+      - --api.dashboard=false
+      - --api.insecure=false
+      - --log.level=DEBUG
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      # Enable HTTPS with Let's Encrypt (free). Uncomment the 4 lines below and set your email and domain DNS to this host.
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --certificatesresolvers.le.acme.email=menuwebservice@gmail.com
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      # NOTE: Do NOT enable HTTP->HTTPS redirection when using ngrok to port 80,
+      # as TLS is terminated by ngrok and forwarded to local :80 (would cause loops)
+      # Optionally redirect HTTP->HTTPS when enabling websecure
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    ports:
+      - "80:80"
+      # - "8080:8080"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/letsencrypt
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  # Homepage
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    volumes:
+      - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
+      - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
+      - ./server/Homepage/config:/app/config            # Répertoire des configurations localisé à côté du docker-compose
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - proxy
+    restart: unless-stopped
+    # Limites de ressources optimisées pour homepage
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'     # Limite à 1 CPU au maximum
+          memory: 512M    # Limite à 512MB de mémoire (suffisant pour homepage)
+        reservations:
+          cpus: '0.2'     # Garantit au minimum 20% d'un CPU
+          memory: 256M    # Garantit au minimum 256MB de mémoire
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.homepage.entrypoints=web"
+      - "traefik.http.routers.homepage.service=homepage"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+
+  # TURN/STUN server (coturn)
+  turn:
+    image: coturn/coturn:latest
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478"
+    environment:
+      # REQUIRED: Set to your public IP or DNS-resolved IP of this host for NAT hairpin correctness
+      - COTURN_PUBLIC_IP=${COTURN_PUBLIC_IP:-127.0.0.1}
+      - COTURN_REALM=${COTURN_REALM:-local}
+      - COTURN_USER=${COTURN_USER:-devuser}
+      - COTURN_PASS=${COTURN_PASS:-devpass}
+    command: >-
+      bash -lc "\ turnserver \
+        --no-cli \
+        --no-tls \
+        --fingerprint \
+        --lt-cred-mech \
+        --realm=${COTURN_REALM:-local} \
+        --user=${COTURN_USER:-devuser}:${COTURN_PASS:-devpass} \
+        --external-ip=${COTURN_PUBLIC_IP:-127.0.0.1} \
+        --listening-port=3478 \
+        --listening-ip=0.0.0.0 \
+        --min-port=49160 --max-port=49200 \
+        --verbose"
+    restart: unless-stopped
+    networks:
+      - proxy
+
+  minio:
+    build:
+      context: ./server/Minio
+      dockerfile: Dockerfile
+    image: minio:latest
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=adminadmin123
+      - S3_BUCKET=bucket
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    networks:
+      - proxy
+      - stornet
+    labels:
+      - "traefik.enable=true"
+      # Route /minio -> MinIO S3 API (HTTP)
+      - "traefik.http.routers.minio.rule=PathPrefix(`/minio`)"
+      - "traefik.http.routers.minio.entrypoints=web"
+      - "traefik.http.routers.minio.service=minio"
+      - "traefik.http.routers.minio.middlewares=minio-strip"
+      - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio.priority=100"
+      - "traefik.docker.network=proxy"
+
+  redis:
+    build:
+      context: ./server/Redis
+      dockerfile: Dockerfile
+    image: redis:latest
+    # For dev you can inline a password; for production use secrets.
+    command: [ "sh", "-c", "exec redis-server --appendonly yes --requirepass \"${REDIS_PASSWORD:-changeme}\"" ]
+    environment:
+      # Set a strong password here (dev example)
+      REDIS_PASSWORD: changeme
+    volumes:
+      - redis_data:/data
+    networks:
+      - proxy
+      - cachenet
+    restart: unless-stopped
+    # No Traefik labels here: Redis is TCP on 6379 (not HTTP). Keep it internal.
+
+volumes:
+  traefik_data:
+  redis_data:
+  minio_data:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  dbnet:
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
+  cachenet:
+    name: cachenet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.20.0/24
+  stornet:
+    name: stornet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.30.0/24
