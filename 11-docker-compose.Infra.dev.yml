@@ -2,18 +2,13 @@ services:
   # Reverse proxy / gateway (Traefik)
   traefik:
     image: traefik:v2.11
-    command:
-      - --api.dashboard=true
-      - --api.insecure=true
-      - --log.level=DEBUG
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
     ports:
       - "80:80"
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./server/Traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
+      - ./server/Traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
       - proxy
     restart: unless-stopped
@@ -23,7 +18,7 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     ports:
-      - 127.0.0.1:3000:3000
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
       - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
@@ -51,29 +46,20 @@ services:
 
   # TURN/STUN server (coturn)
   turn:
-    image: coturn/coturn:latest
+    build:
+      context: ./server/Turn
+      dockerfile: Dockerfile
+    image: turn:latest
     ports:
       - "3478:3478/udp"
       - "3478:3478"
+      - "49160-49200:49160-49200/udp"
     environment:
       # REQUIRED: Set to your public IP or DNS-resolved IP of this host for NAT hairpin correctness
       - COTURN_PUBLIC_IP=${COTURN_PUBLIC_IP:-127.0.0.1}
       - COTURN_REALM=${COTURN_REALM:-local}
       - COTURN_USER=${COTURN_USER:-devuser}
       - COTURN_PASS=${COTURN_PASS:-devpass}
-    command: >-
-      bash -lc "\ turnserver \
-        --no-cli \
-        --no-tls \
-        --fingerprint \
-        --lt-cred-mech \
-        --realm=${COTURN_REALM:-local} \
-        --user=${COTURN_USER:-devuser}:${COTURN_PASS:-devpass} \
-        --external-ip=${COTURN_PUBLIC_IP:-127.0.0.1} \
-        --listening-port=3478 \
-        --listening-ip=0.0.0.0 \
-        --min-port=49160 --max-port=49200 \
-        --verbose"
     restart: unless-stopped
     networks:
       - proxy
@@ -86,7 +72,9 @@ services:
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=adminadmin123
-      - S3_BUCKET=bucket
+      # - S3_BUCKET=bucket
+      # - S3_BUCKETS=bucket1,bucket2
+      # - MINIO_PUBLIC=true
     ports:
       - "127.0.0.1:9000:9000" # S3 API
       - "127.0.0.1:9001:9001" # MinIO Console
@@ -115,8 +103,6 @@ services:
     image: redis:latest
     ports:
       - "127.0.0.1:6379:6379"
-    # For dev you can inline a password; for production use secrets.
-    command: [ "sh", "-c", "exec redis-server --appendonly yes --requirepass \"${REDIS_PASSWORD:-changeme}\"" ]
     environment:
       # Set a strong password here (dev example)
       REDIS_PASSWORD: changeme
