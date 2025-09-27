@@ -6,7 +6,8 @@ ARG TZ=Europe/Paris
 
 # Runtime environment
 ENV TZ=${TZ} \
-    NODE_ENV=production
+    NODE_ENV=production \
+    HOMEPAGE_ALLOWED_HOSTS=homepage.localhost,homepage.localhost:80,localhost,localhost:80,127.0.0.1
 
 # Install minimal packages (tzdata, CA certs, curl), set timezone, and create non-root user
 # Note: base is Alpine-based, so use apk

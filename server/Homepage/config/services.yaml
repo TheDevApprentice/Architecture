@@ -9,72 +9,62 @@
     #     # container: none
     #     icon: https://cdn3.iconfinder.com/data/icons/web-and-mobile-colored-icons-vol-2/128/53-512.png
 
-- Web:
-    - personnal website:
-        href: https://menuwebservice.com
-        description: Prod MeetSporty Website
-        server: my-docker
-        icon: https://www.svgrepo.com/show/374167/vite.svg
-        container: meetsporty
-        showStats: true
-        siteMonitor: https://menuwebservice.com
-    - meetsporty.fr:
-        href: https://front.menuwebservice.com
-        description: Prod MeetSporty Website
-        server: my-docker
-        icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
-        container: meetsporty
-        showStats: true
-        siteMonitor: https://front.menuwebservice.com
-    - api.meetsporty.fr:
-        href: https://api.menuwebservice.com
-        description: Prod MeetSporty API
-        # server: my-docker
-        icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
-        # container: none
-        # showStats: true
-        # siteMonitor: https://meetsporty.fr
-    - mobile.meetsporty.fr:
-        href: https://menuwebservice.com/application.apk
-        description: "MeetSporty Mobile App - APK Android"
-        # server: my-docker
-        icon: https://static-00.iconduck.com/assets.00/expo-icon-512x462-3a87htea.png
-        # container: none
-        # showStats: true
-        # siteMonitor: https://meetsporty.fr
+# - Web:
+    # - personnal website:
+    #     href: https://menuwebservice.com
+    #     description: Prod MeetSporty Website
+    #     server: my-docker
+    #     icon: https://www.svgrepo.com/show/374167/vite.svg
+    #     container: meetsporty
+    #     showStats: true
+    #     siteMonitor: https://menuwebservice.com
+    # - meetsporty.fr:
+    #     href: https://front.menuwebservice.com
+    #     description: Prod MeetSporty Website
+    #     server: my-docker
+    #     icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
+    #     container: meetsporty
+    #     showStats: true
+    #     siteMonitor: https://front.menuwebservice.com
+    # - api.meetsporty.fr:
+    #     href: https://api.menuwebservice.com
+    #     description: Prod MeetSporty API
+    #     # server: my-docker
+    #     icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
+    #     # container: none
+    #     # showStats: true
+    #     # siteMonitor: https://meetsporty.fr
+    # - mobile.meetsporty.fr:
+    #     href: https://menuwebservice.com/application.apk
+    #     description: "MeetSporty Mobile App - APK Android"
+    #     # server: my-docker
+    #     icon: https://static-00.iconduck.com/assets.00/expo-icon-512x462-3a87htea.png
+    #     # container: none
+    #     # showStats: true
+    #     # siteMonitor: https://meetsporty.fr
 
 - Services:
-    - Service Gitlab:
-        href: https://gitlab.menuwebservice.com
-        description: GitLab CI/CD
-        server: my-docker
-        container: gitlab
-        icon: gitlab.png
-        # siteMonitor: https://gitlab.menuwebservice.com
-        showStats: true
-
-    - Service mail:
-        href: https://maillab.menuwebservice.com
-        description: Mail Service
-        server: my-docker
-        container: roundcube
-        icon: https://djeqr6to3dedg.cloudfront.net/repo-logos/mailserver/docker-mailserver/live/logo-1708530292498.png
-        # siteMonitor: https://menuwebservice.com
-        showStats: true
-
     - Service Maria Db Server:
         description: Serveur MariaDb
         server: my-docker
-        container: mariadb_server
+        container: proxysql
         icon: https://cdn.worldvectorlogo.com/logos/mariadb.svg
         showStats: true
 
-    - Service DataVault:
+    - Service Minio:
         href: https://locker.menuwebservice.com
         description: Serveur DataVault
         server: my-docker
-        container: minio-server
+        container: minio
         icon: https://cdn.worldvectorlogo.com/logos/minio-1.svg
+        showStats: true
+
+    - Service Redis:
+        href: https://locker.menuwebservice.com
+        description: Serveur Redis
+        server: my-docker
+        container: redis
+        icon: https://cdn.worldvectorlogo.com/logos/redis.svg
         showStats: true
 - Management:
     - Google Calendar:
