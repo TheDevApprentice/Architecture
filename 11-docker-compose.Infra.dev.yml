@@ -17,12 +17,11 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
-    ports:
-      - "127.0.0.1:3000:3000"
     volumes:
       - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
       - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
       - ./server/Homepage/config:/app/config            # Répertoire des configurations localisé à côté du docker-compose
+      - homepage_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - proxy
@@ -54,12 +53,6 @@ services:
       - "3478:3478/udp"
       - "3478:3478"
       - "49160-49200:49160-49200/udp"
-    environment:
-      # REQUIRED: Set to your public IP or DNS-resolved IP of this host for NAT hairpin correctness
-      - COTURN_PUBLIC_IP=${COTURN_PUBLIC_IP:-127.0.0.1}
-      - COTURN_REALM=${COTURN_REALM:-local}
-      - COTURN_USER=${COTURN_USER:-devuser}
-      - COTURN_PASS=${COTURN_PASS:-devpass}
     restart: unless-stopped
     networks:
       - proxy
@@ -76,7 +69,6 @@ services:
       # - S3_BUCKETS=bucket1,bucket2
       # - MINIO_PUBLIC=true
     ports:
-      - "127.0.0.1:9000:9000" # S3 API
       - "127.0.0.1:9001:9001" # MinIO Console
     volumes:
       - minio_data:/data
@@ -129,11 +121,8 @@ services:
       - "traefik.http.routers.rediscommander.rule=PathPrefix(`/redis-commander`)"
       - "traefik.http.routers.rediscommander.entrypoints=web"
       - "traefik.http.routers.rediscommander.service=rediscommander"
-      - "traefik.http.routers.rediscommander.middlewares=rediscommander-strip,rediscommander-auth,rediscommander-allow"
+      - "traefik.http.routers.rediscommander.middlewares=rediscommander-strip"
       - "traefik.http.middlewares.rediscommander-strip.stripprefix.prefixes=/redis-commander"
-      - "traefik.http.middlewares.rediscommander-auth.basicauth.users=admin:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
-      - "traefik.http.middlewares.rediscommander-auth.basicauth.removeheader=true"
-      - "traefik.http.middlewares.rediscommander-allow.ipwhitelist.sourcerange=127.0.0.1/32,172.30.0.0/24,::1/128"
       - "traefik.http.services.rediscommander.loadbalancer.server.port=8081"
       - "traefik.docker.network=proxy"
     networks:
@@ -141,6 +130,7 @@ services:
       - proxy
 
 volumes:
+  homepage_data:
   traefik_data:
   redis_data:
   minio_data:
