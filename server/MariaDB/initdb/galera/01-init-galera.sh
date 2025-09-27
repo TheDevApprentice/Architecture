@@ -30,7 +30,7 @@ GRANT SHOW DATABASES ON *.* TO 'maxscale'@'%';
 GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'maxscale'@'%';
 
 -- Utilisateur applicatif avec permissions ??tendues
-GRANT ALL PRIVILEGES ON chat.* TO 'chat'@'%';
+GRANT ALL PRIVILEGES ON *.* TO 'user'@'%';
 
 FLUSH PRIVILEGES;
 SQL

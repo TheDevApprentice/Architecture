@@ -106,10 +106,10 @@ mysql_users =
 (
     {
         username = "user"
-        password = "password"
+        password = "user"
         default_hostgroup = 10
         use_ssl = 0
-        default_schema = "db"
+        default_schema = ""
         schema_locked = 0
         transaction_persistent = 1
         fast_forward = 0

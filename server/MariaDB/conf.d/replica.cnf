@@ -22,7 +22,7 @@ log_slave_updates=ON
 gtid_domain_id=1
 
 # Rewrite primary DB name 'chat' to 'chat_backup' on the replica
-replicate-rewrite-db=chat->chat_backup
+# replicate-rewrite-db=chat->chat_backup
 
 # Networking
 bind-address=0.0.0.0
