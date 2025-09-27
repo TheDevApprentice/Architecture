@@ -17,6 +17,9 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
+    environment:
+      # Allow hostnames served via Traefik host rule
+      - HOMEPAGE_ALLOWED_HOSTS=homepage.localhost,homepage.localhost:80,localhost,localhost:80,127.0.0.1
     volumes:
       - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
       - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
@@ -37,8 +40,10 @@ services:
           memory: 256M    # Garantit au minimum 256MB de mémoire
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.homepage.rule=PathPrefix(`/dashboard`)"
+      # Route rule -> Homepage (HTTP)
+      - "traefik.http.routers.homepage.rule=Host(`homepage.localhost`)"
       - "traefik.http.routers.homepage.entrypoints=web"
+      - "traefik.http.routers.homepage.priority=2"
       - "traefik.http.routers.homepage.service=homepage"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
       - "traefik.docker.network=proxy"
@@ -62,6 +67,7 @@ services:
       context: ./server/Minio
       dockerfile: Dockerfile
     image: minio:latest
+    container_name: minio
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=adminadmin123
@@ -93,8 +99,7 @@ services:
       context: ./server/Redis
       dockerfile: Dockerfile
     image: redis:latest
-    ports:
-      - "127.0.0.1:6379:6379"
+    container_name: redis
     environment:
       # Set a strong password here (dev example)
       REDIS_PASSWORD: changeme
@@ -109,20 +114,23 @@ services:
   redis-commander:
     image: rediscommander/redis-commander:latest
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8081:8081"
     environment:
       - REDIS_HOSTS=local:redis:6379:0:changeme
       - HTTP_USER=admin
       - HTTP_PASSWORD=secret
+      # Make the app aware it is served under /redis-commander
+      - URL_PREFIX=/redis-commander
+      - HTTP_PATH=/redis-commander
     labels:
       - "traefik.enable=true"
       # Route /redis-commander -> Redis Commander Web UI (HTTP)
       - "traefik.http.routers.rediscommander.rule=PathPrefix(`/redis-commander`)"
       - "traefik.http.routers.rediscommander.entrypoints=web"
       - "traefik.http.routers.rediscommander.service=rediscommander"
-      - "traefik.http.routers.rediscommander.middlewares=rediscommander-strip"
-      - "traefik.http.middlewares.rediscommander-strip.stripprefix.prefixes=/redis-commander"
+      # Ensure "/redis-commander" (without trailing slash) redirects to "/redis-commander/"
+      - "traefik.http.routers.rediscommander.middlewares=rediscommander-slash"
+      - "traefik.http.middlewares.rediscommander-slash.redirectregex.regex=^/redis-commander$"
+      - "traefik.http.middlewares.rediscommander-slash.redirectregex.replacement=/redis-commander/"
       - "traefik.http.services.rediscommander.loadbalancer.server.port=8081"
       - "traefik.docker.network=proxy"
     networks:

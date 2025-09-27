@@ -5,6 +5,7 @@ services:
       context: ./server/MariaDB/ProxySQL
       dockerfile: Dockerfile
     image: proxysql:latest
+    container_name: proxysql
     volumes:
       - ./server/MariaDB/ProxySQL/proxysql.cnf:/etc/proxysql.cnf:ro
       - proxysql_data:/var/lib/proxysql
@@ -61,7 +62,7 @@ services:
       GTID_DOMAIN_ID: "1"
       # MARIADB_DATABASE: chat
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -104,9 +105,9 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: chat
+      # MARIADB_DATABASE: user
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -152,9 +153,9 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: chat
+      # MARIADB_DATABASE: user
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -208,9 +209,9 @@ services:
       - "127.0.0.1:3317:3306"
     environment:
       # MARIADB_DATABASE: backup
-      MARIADB_USER: user
-      MARIADB_PASSWORD: password
-      MARIADB_ROOT_PASSWORD: root_backup
+      MARIADB_USER: user_backup
+      MARIADB_PASSWORD: user_backup
+      MARIADB_ROOT_PASSWORD: root
       # Replication configuration (via MaxScale Binlog Server)
       PRIMARY_HOST: maxscale
       PRIMARY_PORT: 3306
@@ -242,32 +243,6 @@ services:
       - dbnet
       - proxy
 
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      - REDIS_HOSTS=local:redis:6379:0:changeme
-      - HTTP_USER=admin
-      - HTTP_PASSWORD=secret
-    labels:
-      - "traefik.enable=true"
-      # Route /redis-commander -> Redis Commander Web UI (HTTP)
-      - "traefik.http.routers.rediscommander.rule=PathPrefix(`/redis-commander`)"
-      - "traefik.http.routers.rediscommander.entrypoints=web"
-      - "traefik.http.routers.rediscommander.service=rediscommander"
-      - "traefik.http.routers.rediscommander.middlewares=rediscommander-strip,rediscommander-auth,rediscommander-allow"
-      - "traefik.http.middlewares.rediscommander-strip.stripprefix.prefixes=/redis-commander"
-      - "traefik.http.middlewares.rediscommander-auth.basicauth.users=admin:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
-      - "traefik.http.middlewares.rediscommander-auth.basicauth.removeheader=true"
-      - "traefik.http.middlewares.rediscommander-allow.ipwhitelist.sourcerange=127.0.0.1/32,172.30.0.0/24,::1/128"
-      - "traefik.http.services.rediscommander.loadbalancer.server.port=8081"
-      - "traefik.docker.network=proxy"
-    networks:
-      - cachenet
-      - proxy
-
 volumes:
   proxysql_data:
   maxscale_data:
@@ -278,28 +253,24 @@ volumes:
 
 networks:
   proxy:
-    external: true
     name: proxy
     ipam:
       driver: default
       config:
         - subnet: 172.30.0.0/24
   dbnet:
-    external: true
     name: dbnet
     ipam:
       driver: default
       config:
         - subnet: 172.31.10.0/24
   cachenet:
-    external: true
     name: cachenet
     ipam:
       driver: default
       config:
         - subnet: 172.31.20.0/24
   stornet:
-    external: true
     name: stornet
     ipam:
       driver: default
