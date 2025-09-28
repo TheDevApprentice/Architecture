@@ -53,6 +53,47 @@ BINLOG_EXPIRE_DAYS="${BINLOG_EXPIRE_DAYS:-3}"
 BINLOG_MAX_SIZE="${BINLOG_MAX_SIZE:-100M}"
 GTID_DOMAIN_ID="${GTID_DOMAIN_ID:-1}"
 
+# Auto bootstrap logic
+DATADIR="/var/lib/mysql"
+GRASTATE="$DATADIR/grastate.dat"
+
+auto_should_bootstrap() {
+  # 1) Fresh data dir -> bootstrap
+  if [ ! -d "$DATADIR/mysql" ]; then
+    echo "[galera-entrypoint] Fresh data dir -> bootstrap"
+    return 0
+  fi
+  # 2) If grastate safe_to_bootstrap=1 and no peer seems reachable, bootstrap
+  if [ -f "$GRASTATE" ] && grep -q "safe_to_bootstrap: 1" "$GRASTATE"; then
+    # Check if any seed is reachable on 3306 quickly
+    IFS=',' read -r -a SEEDS_ARR <<< "$CLUSTER_SEEDS"
+    for host in "${SEEDS_ARR[@]}"; do
+      # skip empty
+      [ -z "$host" ] && continue
+      # Skip self if hostname matches
+      if [ "$host" = "$NODE_ADDRESS" ] || [ "$host" = "$NODE_NAME" ]; then
+        continue
+      fi
+      if bash -lc "</dev/tcp/${host}/3306" >/dev/null 2>&1; then
+        echo "[galera-entrypoint] Peer ${host}:3306 reachable -> join, not bootstrap"
+        return 1
+      fi
+    done
+    echo "[galera-entrypoint] safe_to_bootstrap=1 and no peers reachable -> bootstrap"
+    return 0
+  fi
+  # default -> join
+  return 1
+}
+
+if [ "$BOOTSTRAP" = "auto" ]; then
+  if auto_should_bootstrap; then
+    BOOTSTRAP="1"
+  else
+    BOOTSTRAP="0"
+  fi
+fi
+
 # Compute wsrep_cluster_address
 if [ "$BOOTSTRAP" = "1" ]; then
   WSREP_CLUSTER_ADDRESS="gcomm://"

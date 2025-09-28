@@ -49,8 +49,8 @@ services:
       NODE_ADDRESS: "mariadb_galera1"
       CLUSTER_NAME: "cluster"
       # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
-      CLUSTER_SEEDS: ""
-      BOOTSTRAP: "1"
+      CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
+      BOOTSTRAP: "auto"
       SST_USER: "sst_user"
       SST_PASSWORD: "sst_password"
       GCACHE_SIZE: "256M"
