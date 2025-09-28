@@ -1,0 +1,142 @@
+services:
+  # Pgpool-II - connection proxy/load balancer/failover
+  pgpool:
+    image: bitnami/pgpool:4
+    container_name: pgpool
+    environment:
+      - PGPOOL_BACKEND_NODES=0:postgresql-primary:5432,1:postgresql-replica1:5432,2:postgresql-replica2:5432
+      - PGPOOL_SR_CHECK_USER=postgres
+      - PGPOOL_SR_CHECK_PASSWORD=postgres
+      - PGPOOL_ADMIN_USERNAME=admin
+      - PGPOOL_ADMIN_PASSWORD=admin
+      - PGPOOL_ENABLE_LOAD_BALANCING=yes
+      - PGPOOL_POSTGRES_USERNAME=postgres
+      - PGPOOL_POSTGRES_PASSWORD=postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    depends_on:
+      postgresql-primary:
+        condition: service_healthy
+      postgresql-replica1:
+        condition: service_healthy
+      postgresql-replica2:
+        condition: service_healthy
+    networks:
+      - dbnet
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # PostgreSQL Primary (Bitnami + repmgr)
+  postgresql-primary:
+    image: bitnami/postgresql-repmgr:14
+    container_name: postgresql-primary
+    environment:
+      - REPMGR_PASSWORD=repmgrpass
+      - REPMGR_PRIMARY_HOST=postgresql-primary
+      - REPMGR_PRIMARY_PORT_NUMBER=5432
+      - REPMGR_PARTNER_NODES=postgresql-primary,postgresql-replica1,postgresql-replica2
+      - REPMGR_NODE_ID=1
+      - REPMGR_NODE_NAME=postgresql-primary-1
+      - REPMGR_NODE_NETWORK_NAME=postgresql-primary
+      - POSTGRESQL_POSTGRES_PASSWORD=postgres
+      - POSTGRESQL_USERNAME=user
+      - POSTGRESQL_PASSWORD=user
+      - POSTGRESQL_DATABASE=keycloak
+    volumes:
+      - postgresql_primary_data:/bitnami/postgresql
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  # PostgreSQL Replica 1
+  postgresql-replica1:
+    image: bitnami/postgresql-repmgr:14
+    container_name: postgresql-replica1
+    environment:
+      - REPMGR_PASSWORD=repmgrpass
+      - REPMGR_PRIMARY_HOST=postgresql-primary
+      - REPMGR_PRIMARY_PORT_NUMBER=5432
+      - REPMGR_PARTNER_NODES=postgresql-primary,postgresql-replica1,postgresql-replica2
+      - REPMGR_NODE_ID=2
+      - REPMGR_NODE_NAME=postgresql-replica-2
+      - REPMGR_NODE_NETWORK_NAME=postgresql-replica1
+      - POSTGRESQL_POSTGRES_PASSWORD=postgres
+      - POSTGRESQL_USERNAME=user
+      - POSTGRESQL_PASSWORD=user
+      - POSTGRESQL_DATABASE=keycloak
+    depends_on:
+      postgresql-primary:
+        condition: service_healthy
+    volumes:
+      - postgresql_replica1_data:/bitnami/postgresql
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # PostgreSQL Replica 2 (acts as backup DB target too)
+  postgresql-replica2:
+    image: bitnami/postgresql-repmgr:14
+    container_name: postgresql-replica2
+    environment:
+      - REPMGR_PASSWORD=repmgrpass
+      - REPMGR_PRIMARY_HOST=postgresql-primary
+      - REPMGR_PRIMARY_PORT_NUMBER=5432
+      - REPMGR_PARTNER_NODES=postgresql-primary,postgresql-replica1,postgresql-replica2
+      - REPMGR_NODE_ID=3
+      - REPMGR_NODE_NAME=postgresql-replica-3
+      - REPMGR_NODE_NETWORK_NAME=postgresql-replica2
+      - POSTGRESQL_POSTGRES_PASSWORD=postgres
+      - POSTGRESQL_USERNAME=user
+      - POSTGRESQL_PASSWORD=user
+      - POSTGRESQL_DATABASE=keycloak
+    depends_on:
+      postgresql-primary:
+        condition: service_healthy
+    volumes:
+      - postgresql_replica2_data:/bitnami/postgresql
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  postgresql_primary_data:
+  postgresql_replica1_data:
+  postgresql_replica2_data:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  dbnet:
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
