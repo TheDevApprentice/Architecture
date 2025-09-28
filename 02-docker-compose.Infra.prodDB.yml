@@ -1,9 +1,11 @@
 services:
+  # ProxySQL - Load balancer for Galera cluster
   proxysql:
     build:
       context: ./server/MariaDB/ProxySQL
       dockerfile: Dockerfile
     image: proxysql:latest
+    container_name: proxysql
     volumes:
       - ./server/MariaDB/ProxySQL/proxysql.cnf:/etc/proxysql.cnf:ro
       - proxysql_data:/var/lib/proxysql
@@ -44,8 +46,8 @@ services:
       NODE_ADDRESS: "mariadb_galera1"
       CLUSTER_NAME: "cluster"
       # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
-      CLUSTER_SEEDS: ""
-      BOOTSTRAP: "1"
+      CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
+      BOOTSTRAP: "auto"
       SST_USER: "sst_user"
       SST_PASSWORD: "sst_password"
       GCACHE_SIZE: "256M"
@@ -57,7 +59,7 @@ services:
       GTID_DOMAIN_ID: "1"
       # MARIADB_DATABASE: chat
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -100,9 +102,9 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: chat
+      # MARIADB_DATABASE: user
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -148,9 +150,9 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: chat
+      # MARIADB_DATABASE: user
       MARIADB_USER: user
-      MARIADB_PASSWORD: password
+      MARIADB_PASSWORD: user
       MARIADB_ROOT_PASSWORD: root
       MARIADB_GALERA_CLUSTER: "yes"
       MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
@@ -201,12 +203,12 @@ services:
       dockerfile: Dockerfile
     image: mariadb:latest
     ports:
-      - "3317:3306"
+      - "127.0.0.1:3317:3306"
     environment:
       # MARIADB_DATABASE: backup
-      MARIADB_USER: user
-      MARIADB_PASSWORD: password
-      MARIADB_ROOT_PASSWORD: root_backup
+      MARIADB_USER: user_backup
+      MARIADB_PASSWORD: user_backup
+      MARIADB_ROOT_PASSWORD: root
       # Replication configuration (via MaxScale Binlog Server)
       PRIMARY_HOST: maxscale
       PRIMARY_PORT: 3306
@@ -248,28 +250,24 @@ volumes:
 
 networks:
   proxy:
-    external: true
     name: proxy
     ipam:
       driver: default
       config:
         - subnet: 172.30.0.0/24
   dbnet:
-    external: true
     name: dbnet
     ipam:
       driver: default
       config:
         - subnet: 172.31.10.0/24
   cachenet:
-    external: true
     name: cachenet
     ipam:
       driver: default
       config:
         - subnet: 172.31.20.0/24
   stornet:
-    external: true
     name: stornet
     ipam:
       driver: default
