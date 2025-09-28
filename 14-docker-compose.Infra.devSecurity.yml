@@ -1,31 +1,70 @@
 services:
- 
+  # Identity Provider - Keycloak (Quarkus)
+  keycloak:
+    build:
+      context: ./server/Keycloak
+      dockerfile: Dockerfile
+    image: keycloak:dev
+    container_name: keycloak
+    environment:
+      KC_HTTP_ENABLED: "true"
+      # Database via ProxySQL on dbnet
+      KC_DB: postgres
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_DB_URL: jdbc:postgresql://pgpool:5432/keycloak
+      # Admin bootstrap (dev only; move to secrets later)
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Reverse proxy awareness
+      KC_HOSTNAME: auth.localhost
+      KC_PROXY: edge
+      KC_HOSTNAME_STRICT: "false"
+      # KC_HOSTNAME_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
+      KC_LOG_LEVEL: info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+      - "traefik.http.routers.keycloak.service=keycloak"
+      - "traefik.http.routers.keycloak.priority=100"
+      - "traefik.docker.network=proxy"
+    command: ["start"]
+    networks:
+      - proxy
+      - dbnet
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080" # Direct local access to Keycloak (dev only)
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      
 volumes:
+  keycloak_data:
 
 networks:
   proxy:
-    external: true
     name: proxy
     ipam:
       driver: default
       config:
         - subnet: 172.30.0.0/24
   dbnet:
-    external: true
     name: dbnet
     ipam:
       driver: default
       config:
         - subnet: 172.31.10.0/24
   cachenet:
-    external: true
     name: cachenet
     ipam:
       driver: default
       config:
         - subnet: 172.31.20.0/24
   stornet:
-    external: true
     name: stornet
     ipam:
       driver: default
