@@ -21,6 +21,8 @@ services:
         condition: service_healthy
       postgresql-replica2:
         condition: service_healthy
+    volumes:
+      - pgpool_data:/bitnami/pgpool
     networks:
       - dbnet
       - proxy
@@ -137,6 +139,7 @@ services:
       - POSTGRESQL_POSTGRES_PASSWORD=postgres
       - POSTGRESQL_USERNAME=user_backup
       - POSTGRESQL_PASSWORD=user_backup
+      - REPMGRD_ENABLED=no
     ports:
       - "127.0.0.1:5444:5432"
     volumes:
@@ -154,6 +157,7 @@ services:
       postgresql-primary:
         condition: service_healthy
 volumes:
+  pgpool_data:
   postgresql_primary_data:
   postgresql_replica1_data:
   postgresql_replica2_data:
