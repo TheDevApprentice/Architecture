@@ -9,11 +9,9 @@ if [ -f /var/lib/postgresql/data/PG_VERSION ]; then
   mkdir -p /var/lib/postgresql/data/pg_log
 fi
 
-# If PGDATA is non-empty (e.g., after basebackup), enforce correct perms/ownership
-if [ "$(ls -A /var/lib/postgresql/data 2>/dev/null | wc -l)" -gt 0 ]; then
-  chown -R postgres:postgres /var/lib/postgresql
-  chmod 700 /var/lib/postgresql/data
-fi
+# Always enforce correct ownership and directory mode on PGDATA
+chown -R postgres:postgres /var/lib/postgresql
+chmod 700 /var/lib/postgresql/data
 
 # Create pgpass file for authentication
 cat > ${PATRONI_POSTGRESQL_PGPASS} <<EOF
@@ -22,6 +20,7 @@ cat > ${PATRONI_POSTGRESQL_PGPASS} <<EOF
 *:*:*:${POSTGRES_USER}:${POSTGRES_PASSWORD}
 EOF
 chmod 600 ${PATRONI_POSTGRESQL_PGPASS}
+chown postgres:postgres ${PATRONI_POSTGRESQL_PGPASS}
 
 # Wait for etcd to be ready
 echo "Waiting for etcd cluster..."
@@ -31,5 +30,9 @@ until curl -s http://etcd1:2379/health > /dev/null 2>&1; do
 done
 echo "Etcd is ready!"
 
-# Execute the command
-exec "$@"
+# Execute Patroni as postgres (drop privileges)
+if command -v gosu >/dev/null 2>&1; then
+  exec gosu postgres "$@"
+else
+  exec su -s /bin/bash -c "exec $*" postgres
+fi

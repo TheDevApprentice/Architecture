@@ -7,6 +7,7 @@ RUN apt-get update \
        python3-pip \
        curl \
        bash \
+       gosu \
        build-essential \
        libpq-dev \
        python3-dev \
@@ -26,7 +27,7 @@ COPY patroni.yml /etc/patroni.yml
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-USER postgres
+USER root
 WORKDIR /var/lib/postgresql
 
 EXPOSE 5432 8008
