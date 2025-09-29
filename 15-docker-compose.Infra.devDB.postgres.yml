@@ -93,12 +93,7 @@ services:
       - dbnet
       - proxy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+
 
   # Patroni Node 1 (Bootstrap node - équivalent mariadb_galera1)
   patroni1:
@@ -311,8 +306,6 @@ services:
       etcd1:
         condition: service_healthy
       patroni1:
-        condition: service_healthy
-      haproxy:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432 && curl -f http://localhost:8008/health || exit 1"]
