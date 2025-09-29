@@ -122,10 +122,42 @@ services:
       retries: 30
       start_period: 60s
 
+  # Backup/Replica PostgreSQL (optionnel, pour compatibilité)
+  postgresql-backup:
+    image: bitnami/postgresql-repmgr:14
+    container_name: postgresql-backup
+    environment:
+      - REPMGR_PASSWORD=repmgrpass
+      - REPMGR_PRIMARY_HOST=postgresql-primary
+      - REPMGR_PRIMARY_PORT_NUMBER=5432
+      - REPMGR_PARTNER_NODES=postgresql-primary,postgresql-replica1,postgresql-replica2,postgresql-backup
+      - REPMGR_NODE_ID=4
+      - REPMGR_NODE_NAME=postgresql-backup-4
+      - REPMGR_NODE_NETWORK_NAME=postgresql-backup
+      - POSTGRESQL_POSTGRES_PASSWORD=postgres
+      - POSTGRESQL_USERNAME=user_backup
+      - POSTGRESQL_PASSWORD=user_backup
+    ports:
+      - "127.0.0.1:5444:5432"
+    volumes:
+      - postgresql_backup_data:/bitnami/postgresql
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    depends_on:
+      postgresql-primary:
+        condition: service_healthy
 volumes:
   postgresql_primary_data:
   postgresql_replica1_data:
   postgresql_replica2_data:
+  postgresql_backup_data:
 
 networks:
   proxy:
