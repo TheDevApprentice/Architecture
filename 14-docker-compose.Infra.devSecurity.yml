@@ -14,8 +14,8 @@ services:
       KC_DB_PASSWORD: postgres
       KC_DB_URL: jdbc:postgresql://pgpool:5432/keycloak
       # Admin bootstrap (dev only; move to secrets later)
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       # Reverse proxy awareness
       KC_HOSTNAME: auth.localhost
       KC_PROXY: edge
