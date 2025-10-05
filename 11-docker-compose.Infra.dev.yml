@@ -5,6 +5,7 @@ services:
     ports:
       - "80:80"
       - "8080:8080"
+      - "9100:9100"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./server/Traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
@@ -71,6 +72,7 @@ services:
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=adminadmin123
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
       # - S3_BUCKET=bucket
       # - S3_BUCKETS=bucket1,bucket2
       # - MINIO_PUBLIC=true

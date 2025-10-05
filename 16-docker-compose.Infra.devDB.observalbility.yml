@@ -1,0 +1,186 @@
+name: observability
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - prometheus_data:/prometheus
+      - ./server/Observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    # ports:
+    #   - "127.0.0.1:9090:9090"
+    networks:
+      - proxy
+      - dbnet
+      - cachenet
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_DOMAIN=localhost
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./server/Observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./server/Observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    # ports:
+    #   - "127.0.0.1:3005:3000"
+    networks:
+      - proxy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Route rule -> Homepage (HTTP)
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.routers.grafana.priority=2"
+      - "traefik.http.routers.grafana.service=grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    command: ["-config.file=/etc/loki/config.yml"]
+    volumes:
+      - loki_data:/loki
+      - ./server/Observability/loki/config.yml:/etc/loki/config.yml:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./server/Observability/promtail/config.yml:/etc/promtail/config.yml:ro
+      - promtail_positions:/var/log
+    depends_on:
+      - loki
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - tempo_data:/var/tempo
+      - ./server/Observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.106.0
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      - GOMEMLIMIT=512MiB
+    volumes:
+      - ./server/Observability/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317" # OTLP gRPC
+      - "127.0.0.1:4318:4318" # OTLP HTTP
+    depends_on:
+      - tempo
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    # ports:
+    #   - "127.0.0.1:8091:8080"
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  postgres_exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres_exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
+    networks:
+      - proxy
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  haproxy_exporter:
+    image: prom/haproxy-exporter:v0.15.0
+    container_name: haproxy_exporter
+    command:
+      - --haproxy.scrape-uri=http://haproxy:7000/;csv
+    networks:
+      - proxy
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: redis_exporter
+    environment:
+      - REDIS_ADDR=redis://:changeme@redis:6379
+    ports: []
+    networks:
+      - proxy
+      - cachenet
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
+  promtail_positions:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  dbnet:
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
+  cachenet:
+    name: cachenet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.20.0/24
+  stornet:
+    name: stornet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.30.0/24

@@ -51,6 +51,13 @@
         icon: https://cdn.worldvectorlogo.com/logos/mariadb.svg
         showStats: true
 
+    - Service PostgreSQL Server:
+        description: Serveur PostgreSQL
+        server: my-docker
+        container: haproxy
+        icon: https://cdn.worldvectorlogo.com/logos/postgresql.svg
+        showStats: true
+
     - Service Minio:
         href: https://locker.menuwebservice.com
         description: Serveur DataVault
