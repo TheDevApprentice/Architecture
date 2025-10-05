@@ -15,9 +15,11 @@ scrape_configs:
 # Add more scrape jobs as needed, e.g., per-patroni node exporters later
 
   - job_name: 'keycloak'
-    metrics_path: /metrics
+    metrics_path: '/metrics'
     static_configs:
-      - targets: ['keycloak:8080']
+      - targets: ['keycloak:9000']
+        labels:
+          instance: 'keycloak'
 
   - job_name: 'traefik'
     metrics_path: /metrics

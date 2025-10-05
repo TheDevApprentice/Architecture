@@ -11,8 +11,8 @@ services:
     volumes:
       - prometheus_data:/prometheus
       - ./server/Observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    # ports:
-    #   - "127.0.0.1:9090:9090"
+    ports:
+      - "127.0.0.1:9090:9090"
     networks:
       - proxy
       - dbnet
