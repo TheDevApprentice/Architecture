@@ -437,7 +437,8 @@
             "mode": "percentage",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "orange",
@@ -503,6 +504,6 @@
   "timezone": "browser",
   "title": "Keycloak - Overview",
   "uid": "svc-keycloak",
-  "version": 20,
+  "version": 22,
   "weekStart": ""
 }
