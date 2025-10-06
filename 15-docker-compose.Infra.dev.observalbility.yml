@@ -23,10 +23,10 @@ services:
     image: grafana/grafana-oss:11.2.0
     container_name: grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SERVER_DOMAIN=localhost
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_SERVER_DOMAIN=${HOST}
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./server/Observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -43,11 +43,11 @@ services:
     labels:
       - "traefik.enable=true"
       # Route rule -> Homepage (HTTP)
-      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${HOST}`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.routers.grafana.priority=2"
       - "traefik.http.routers.grafana.service=grafana"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.services.grafana.loadbalancer.server.port=${GF_LOADBALENCER_SERVER_PORT}"
       - "traefik.docker.network=proxy"
 
   loki:
@@ -122,7 +122,7 @@ services:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
     container_name: postgres_exporter
     environment:
-      - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
+      - DATA_SOURCE_NAME=${POSTGRES_EXPORTER_DATA_SOURCE_NAME}
     networks:
       - proxy
       - dbnet
@@ -134,7 +134,7 @@ services:
     image: prom/haproxy-exporter:v0.15.0
     container_name: haproxy_exporter
     command:
-      - --haproxy.scrape-uri=http://haproxy:7000/;csv
+      - --haproxy.scrape-uri=${haproxy_scrape_uri}
     networks:
       - proxy
     restart: unless-stopped

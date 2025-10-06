@@ -13,10 +13,10 @@ services:
       - "127.0.0.1:6033:6033" # MySQL port for applications
       - "127.0.0.1:6032:6032" # Admin interface
     environment:
-      - PROXYSQL_ADMIN_USER=admin
-      - PROXYSQL_ADMIN_PASSWORD=admin
-      - MYSQL_USER=monitor
-      - MYSQL_PASSWORD=monitor
+      - PROXYSQL_ADMIN_USER=${PROXYSQL_ADMIN_USER}
+      - PROXYSQL_ADMIN_PASSWORD=${PROXYSQL_ADMIN_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     depends_on:
       mariadb_galera1:
         condition: service_healthy
@@ -52,8 +52,8 @@ services:
       # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
       CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
       BOOTSTRAP: "auto"
-      SST_USER: "sst_user"
-      SST_PASSWORD: "sst_password"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
       GCACHE_SIZE: "256M"
       GCACHE_PAGE_SIZE: "128M"
       INNODB_BUFFER_POOL_SIZE: "256M"
@@ -61,13 +61,12 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: chat
-      MARIADB_USER: user
-      MARIADB_PASSWORD: user
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_GALERA_CLUSTER: "yes"
-      MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
-      MARIADB_GALERA_MARIABACKUP_PASSWORD: "sst_password"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
     volumes:
       - galera_node1:/var/lib/mysql
       - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
@@ -98,8 +97,8 @@ services:
       # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
       CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
       BOOTSTRAP: "0"
-      SST_USER: "sst_user"
-      SST_PASSWORD: "sst_password"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
       GCACHE_SIZE: "256M"
       GCACHE_PAGE_SIZE: "128M"
       INNODB_BUFFER_POOL_SIZE: "256M"
@@ -107,13 +106,12 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: user
-      MARIADB_USER: user
-      MARIADB_PASSWORD: user
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_GALERA_CLUSTER: "yes"
-      MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
-      MARIADB_GALERA_MARIABACKUP_PASSWORD: "sst_password"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
     volumes:
       - galera_node2:/var/lib/mysql
       - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
@@ -147,8 +145,8 @@ services:
       # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
       CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
       BOOTSTRAP: "0"
-      SST_USER: "sst_user"
-      SST_PASSWORD: "sst_password"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
       GCACHE_SIZE: "256M"
       GCACHE_PAGE_SIZE: "128M"
       INNODB_BUFFER_POOL_SIZE: "256M"
@@ -156,13 +154,12 @@ services:
       BINLOG_EXPIRE_DAYS: "3"
       BINLOG_MAX_SIZE: "100M"
       GTID_DOMAIN_ID: "1"
-      # MARIADB_DATABASE: user
-      MARIADB_USER: user
-      MARIADB_PASSWORD: user
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_GALERA_CLUSTER: "yes"
-      MARIADB_GALERA_MARIABACKUP_USER: "sst_user"
-      MARIADB_GALERA_MARIABACKUP_PASSWORD: "sst_password"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
     volumes:
       - galera_node3:/var/lib/mysql
       - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
@@ -213,15 +210,14 @@ services:
     ports:
       - "127.0.0.1:3317:3306"
     environment:
-      # MARIADB_DATABASE: backup
-      MARIADB_USER: user_backup
-      MARIADB_PASSWORD: user_backup
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_USER: ${MARIADB_USER_BACKUP}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD_BACKUP}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD_BACKUP}
       # Replication configuration (via MaxScale Binlog Server)
-      PRIMARY_HOST: maxscale
-      PRIMARY_PORT: 3306
-      REPL_USER: repl
-      REPL_PASSWORD: replpass
+      PRIMARY_HOST: ${MARIADB_BACKUP_PRIMARY_HOST}
+      PRIMARY_PORT: ${MARIADB_BACKUP_PRIMARY_PORT}
+      REPL_USER: ${MARIADB_BACKUP_REPL_USER}
+      REPL_PASSWORD: ${MARIADB_BACKUP_REPL_PASSWORD}
     volumes:
       - mariadb_backup_data:/var/lib/mysql
       - ./server/MariaDB/conf.d/replica.cnf:/etc/mysql/mariadb.conf.d/zz-replica.cnf:ro

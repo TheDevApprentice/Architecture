@@ -79,8 +79,8 @@ services:
     volumes:
       - ./server/PostgreSQL/Patroni/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
-    #   - "127.0.0.1:5432:5432"   # PostgreSQL primary port
-    #   - "127.0.0.1:5433:5433"   # PostgreSQL replicas port (read-only)
+      - "127.0.0.1:5432:5432"   # PostgreSQL primary port
+      - "127.0.0.1:5433:5433"   # PostgreSQL replicas port (read-only)
       - "127.0.0.1:7000:7000"   # HAProxy stats
     depends_on:
       patroni1:
@@ -145,7 +145,7 @@ services:
       etcd3:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432 && curl -f http://localhost:8008/health || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -201,7 +201,7 @@ services:
       patroni1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432 && curl -f http://localhost:8008/health || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -257,7 +257,7 @@ services:
       patroni1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432 && curl -f http://localhost:8008/health || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -308,7 +308,7 @@ services:
       patroni1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost -p 5432 && curl -f http://localhost:8008/health || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30

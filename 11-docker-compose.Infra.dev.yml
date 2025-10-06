@@ -5,8 +5,8 @@ services:
     container_name: traefik
     ports:
       - "80:80"
-      - "8080:8080"
-      # - "9100:9100"
+      # - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
+      # - "9100:9100" # Un-comment if you want to access the Traefik metrics from host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./server/Traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
@@ -21,7 +21,7 @@ services:
     container_name: homepage
     environment:
       # Allow hostnames served via Traefik host rule
-      - HOMEPAGE_ALLOWED_HOSTS=homepage.localhost,homepage.localhost:80,localhost,localhost:80,127.0.0.1
+      - HOMEPAGE_ALLOWED_HOSTS=homepage.${HOST},homepage.${HOST}:80,${HOST},${HOST}:80,127.0.0.1
     volumes:
       - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
       - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
@@ -43,11 +43,11 @@ services:
     labels:
       - "traefik.enable=true"
       # Route rule -> Homepage (HTTP)
-      - "traefik.http.routers.homepage.rule=Host(`homepage.localhost`)"
+      - "traefik.http.routers.homepage.rule=Host(`homepage.${HOST}`)"
       - "traefik.http.routers.homepage.entrypoints=web"
       - "traefik.http.routers.homepage.priority=2"
       - "traefik.http.routers.homepage.service=homepage"
-      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+      - "traefik.http.services.homepage.loadbalancer.server.port=${HOMEPAGE_LOADBALENCER_SERVER_PORT}"
       - "traefik.docker.network=proxy"
 
   # TURN/STUN server (coturn)
@@ -72,12 +72,12 @@ services:
     image: minio:latest
     container_name: minio
     environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=adminadmin123
-      - MINIO_PROMETHEUS_AUTH_TYPE=public
-      # - S3_BUCKET=bucket
-      # - S3_BUCKETS=bucket1,bucket2
-      # - MINIO_PUBLIC=true
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_PROMETHEUS_AUTH_TYPE=${MINIO_PROMETHEUS_AUTH_TYPE}
+      # - S3_BUCKET=bucket # Un-comment if you want to create a bucket
+      # - S3_BUCKETS=bucket1,bucket2 # Un-comment if you want to create multiple buckets
+      # - MINIO_PUBLIC=true # Un-comment if you want to make MinIO public (not recommended for production)
     # ports:
     #   - "127.0.0.1:9001:9001" # MinIO Console
     volumes:
@@ -94,15 +94,15 @@ services:
       - "traefik.http.routers.minio.service=minio"
       - "traefik.http.routers.minio.middlewares=minio-strip"
       - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
-      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+      - "traefik.http.services.minio.loadbalancer.server.port=${MINIO_PATH_LOADBALENCER_SERVER_PORT}"
       - "traefik.http.routers.minio.priority=100"
 
       # Route rule -> Minio (HTTP)
-      - "traefik.http.routers.minio-storage.rule=Host(`storage.localhost`)"
+      - "traefik.http.routers.minio-storage.rule=Host(`storage.${HOST}`)"
       - "traefik.http.routers.minio-storage.entrypoints=web"
       - "traefik.http.routers.minio-storage.priority=2"
       - "traefik.http.routers.minio-storage.service=minio-storage"
-      - "traefik.http.services.minio-storage.loadbalancer.server.port=9001"
+      - "traefik.http.services.minio-storage.loadbalancer.server.port=${MINIO_STORAGE_LOADBALENCER_SERVER_PORT}"
 
       - "traefik.docker.network=proxy"
 
@@ -114,7 +114,7 @@ services:
     container_name: redis
     environment:
       # Set a strong password here (dev example)
-      REDIS_PASSWORD: changeme
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
@@ -123,6 +123,7 @@ services:
     restart: unless-stopped
     # No Traefik labels here: Redis is TCP on 6379 (not HTTP). Keep it internal.
 
+  # LEAVE IT COMMENTED
   # redis-commander:
   #   image: rediscommander/redis-commander:latest
   #   restart: unless-stopped

@@ -9,32 +9,32 @@ services:
     image: keycloak:dev
     container_name: keycloak
     environment:
-      KC_HTTP_ENABLED: "true"
+      KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
       # Database via ProxySQL on dbnet
-      KC_DB: postgres
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: postgres
-      KC_DB_URL: jdbc:postgresql://haproxy:5432/keycloak
+      KC_DB: ${KC_DB}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_DB_URL: ${KC_DB_URL}
       # Admin bootstrap (dev only; move to secrets later)
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       # Reverse proxy awareness
-      KC_HOSTNAME: auth.localhost
-      KC_PROXY: edge
-      KC_HOSTNAME_STRICT: "false"
-      # KC_HOSTNAME_PORT: 8080
-      KC_METRICS_ENABLED: "true"
-      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_PROXY: ${KC_PROXY}
+      KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT}"
+      # KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+      KC_METRICS_ENABLED: "${KC_METRICS_ENABLED}"
+      KC_HEALTH_ENABLED: "${KC_HEALTH_ENABLED}"
       # OpenTelemetry traces -> OTel Collector -> Tempo
-      KC_FEATURES: opentelemetry
-      KC_OPENTELEMETRY_ENDPOINT: http://otel-collector:4317
-      KC_OPENTELEMETRY_PROTOCOL: grpc
-      KC_LOG_LEVEL: info
+      KC_FEATURES: ${KC_FEATURES}
+      KC_OPENTELEMETRY_ENDPOINT: ${KC_OPENTELEMETRY_ENDPOINT}
+      KC_OPENTELEMETRY_PROTOCOL: ${KC_OPENTELEMETRY_PROTOCOL}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.${HOST}`)"
       - "traefik.http.routers.keycloak.entrypoints=web"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=${KC_LOADBALENCER_SERVER_PORT}"
       - "traefik.http.routers.keycloak.service=keycloak"
       - "traefik.http.routers.keycloak.priority=100"
       - "traefik.docker.network=proxy"
