@@ -1,3 +1,5 @@
+name: security
+
 services:
   # Identity Provider - Keycloak (Quarkus)
   keycloak:
@@ -30,7 +32,6 @@ services:
       KC_LOG_LEVEL: info
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
       - "traefik.http.routers.keycloak.rule=Host(`auth.localhost`)"
       - "traefik.http.routers.keycloak.entrypoints=web"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"

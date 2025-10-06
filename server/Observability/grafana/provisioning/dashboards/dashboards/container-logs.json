@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 3,
   "links": [],
   "panels": [
     {
@@ -28,8 +28,8 @@
         "uid": "loki"
       },
       "gridPos": {
-        "h": 25,
-        "w": 13,
+        "h": 15,
+        "w": 24,
         "x": 0,
         "y": 0
       },
@@ -135,6 +135,6 @@
   "timezone": "browser",
   "title": "Containers Logs (Loki)",
   "uid": "containers-logs",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }

@@ -94,9 +94,9 @@ services:
       - GOMEMLIMIT=512MiB
     volumes:
       - ./server/Observability/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
-    ports:
-      - "127.0.0.1:4317:4317" # OTLP gRPC
-      - "127.0.0.1:4318:4318" # OTLP HTTP
+    # ports:
+    #   - "127.0.0.1:4317:4317" # OTLP gRPC
+    #   - "127.0.0.1:4318:4318" # OTLP HTTP
     depends_on:
       - tempo
     networks:
@@ -118,39 +118,39 @@ services:
       - proxy
     restart: unless-stopped
 
-  postgres_exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: postgres_exporter
-    environment:
-      - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
-    networks:
-      - proxy
-      - dbnet
-    restart: unless-stopped
-    depends_on:
-      - prometheus
+  # postgres_exporter:
+  #   image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+  #   container_name: postgres_exporter
+  #   environment:
+  #     - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
+  #   networks:
+  #     - proxy
+  #     - dbnet
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - prometheus
 
-  haproxy_exporter:
-    image: prom/haproxy-exporter:v0.15.0
-    container_name: haproxy_exporter
-    command:
-      - --haproxy.scrape-uri=http://haproxy:7000/;csv
-    networks:
-      - proxy
-    restart: unless-stopped
-    depends_on:
-      - prometheus
+  # haproxy_exporter:
+  #   image: prom/haproxy-exporter:v0.15.0
+  #   container_name: haproxy_exporter
+  #   command:
+  #     - --haproxy.scrape-uri=http://haproxy:7000/;csv
+  #   networks:
+  #     - proxy
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - prometheus
 
-  redis_exporter:
-    image: oliver006/redis_exporter:v1.66.0
-    container_name: redis_exporter
-    environment:
-      - REDIS_ADDR=redis://:changeme@redis:6379
-    ports: []
-    networks:
-      - proxy
-      - cachenet
-    restart: unless-stopped
+  # redis_exporter:
+  #   image: oliver006/redis_exporter:v1.66.0
+  #   container_name: redis_exporter
+  #   environment:
+  #     - REDIS_ADDR=redis://:changeme@redis:6379
+  #   ports: []
+  #   networks:
+  #     - proxy
+  #     - cachenet
+  #   restart: unless-stopped
 
 volumes:
   prometheus_data:
