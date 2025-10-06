@@ -1,3 +1,5 @@
+name: mariaDb
+
 services:
   # ProxySQL - Load balancer for Galera cluster
   proxysql:
