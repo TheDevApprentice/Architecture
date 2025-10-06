@@ -28,7 +28,7 @@
         showStats: true
     - Galera Node 1:
         server: my-docker
-        container: mariadb_galera1-1
+        container: mariadb_galera1
         icon: https://www.svgrepo.com/show/452012/mysql.svg
         showStats: true
     - Galera Node 2:
