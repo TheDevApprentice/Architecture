@@ -141,17 +141,6 @@ services:
     depends_on:
       - prometheus
 
-  # redis_exporter:
-  #   image: oliver006/redis_exporter:v1.66.0
-  #   container_name: redis_exporter
-  #   environment:
-  #     - REDIS_ADDR=redis://:changeme@redis:6379
-  #   ports: []
-  #   networks:
-  #     - proxy
-  #     - cachenet
-  #   restart: unless-stopped
-
 volumes:
   prometheus_data:
   grafana_data:

@@ -7,6 +7,10 @@ deleteDatasources:
     orgId: 1
   - name: Tempo
     orgId: 1
+  - name: Postgres (RO)
+    orgId: 1
+  - name: Postgres keycloak (RO)
+    orgId: 1
 
 datasources:
   - name: Prometheus
