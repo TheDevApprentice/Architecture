@@ -121,9 +121,9 @@ services:
       - PATRONI_admin_PASSWORD=admin
       - PATRONI_admin_OPTIONS=createdb,createrole
       # Database initialization
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=user
+      # - POSTGRES_DB=keycloak
+      # - POSTGRES_USER=user
+      # - POSTGRES_PASSWORD=user
       # Bootstrap configuration
       - PATRONI_BOOTSTRAP_DCS_TTL=30
       - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
@@ -176,9 +176,9 @@ services:
       - PATRONI_REPLICATION_PASSWORD=replpass
       - PATRONI_admin_PASSWORD=admin
       - PATRONI_admin_OPTIONS=createdb,createrole
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=user
+      # - POSTGRES_DB=keycloak
+      # - POSTGRES_USER=user
+      # - POSTGRES_PASSWORD=user
       - PATRONI_BOOTSTRAP_DCS_TTL=30
       - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
       - PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT=30
@@ -232,9 +232,9 @@ services:
       - PATRONI_REPLICATION_PASSWORD=replpass
       - PATRONI_admin_PASSWORD=admin
       - PATRONI_admin_OPTIONS=createdb,createrole
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=user
+      # - POSTGRES_DB=keycloak
+      # - POSTGRES_USER=user
+      # - POSTGRES_PASSWORD=user
       - PATRONI_BOOTSTRAP_DCS_TTL=30
       - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
       - PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT=30
@@ -288,9 +288,9 @@ services:
       - PATRONI_REPLICATION_PASSWORD=replpass
       - PATRONI_admin_PASSWORD=admin
       - PATRONI_admin_OPTIONS=createdb,createrole
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=user_backup
-      - POSTGRES_PASSWORD=user_backup
+      # - POSTGRES_DB=keycloak
+      # - POSTGRES_USER=user_backup
+      # - POSTGRES_PASSWORD=user_backup
       # Configuration spécifique backup (ne devient jamais primary)
       - PATRONI_TAGS_NOFAILOVER=true
       - PATRONI_TAGS_NOLOADBALANCE=true
