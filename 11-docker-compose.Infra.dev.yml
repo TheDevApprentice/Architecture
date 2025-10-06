@@ -6,7 +6,7 @@ services:
     ports:
       - "80:80"
       - "8080:8080"
-      - "9100:9100"
+      # - "9100:9100"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./server/Traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
@@ -78,8 +78,8 @@ services:
       # - S3_BUCKET=bucket
       # - S3_BUCKETS=bucket1,bucket2
       # - MINIO_PUBLIC=true
-    ports:
-      - "127.0.0.1:9001:9001" # MinIO Console
+    # ports:
+    #   - "127.0.0.1:9001:9001" # MinIO Console
     volumes:
       - minio_data:/data
     restart: unless-stopped
@@ -96,6 +96,14 @@ services:
       - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
       - "traefik.http.services.minio.loadbalancer.server.port=9000"
       - "traefik.http.routers.minio.priority=100"
+
+      # Route rule -> Minio (HTTP)
+      - "traefik.http.routers.minio-storage.rule=Host(`storage.localhost`)"
+      - "traefik.http.routers.minio-storage.entrypoints=web"
+      - "traefik.http.routers.minio-storage.priority=2"
+      - "traefik.http.routers.minio-storage.service=minio-storage"
+      - "traefik.http.services.minio-storage.loadbalancer.server.port=9001"
+
       - "traefik.docker.network=proxy"
 
   redis:
