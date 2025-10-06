@@ -3,14 +3,14 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # - job_name: 'postgres_exporter'
-  #   static_configs:
-  #     - targets: ['postgres_exporter:9187']
+  - job_name: 'postgres_exporter'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
 
-  # - job_name: 'etcd'
-  #   metrics_path: /metrics
-  #   static_configs:
-  #     - targets: ['etcd1:2379', 'etcd2:2379', 'etcd3:2379']
+  - job_name: 'etcd'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['etcd1:2379', 'etcd2:2379', 'etcd3:2379']
 
 # Add more scrape jobs as needed, e.g., per-patroni node exporters later
 
@@ -29,8 +29,3 @@ scrape_configs:
   # - job_name: 'redis_exporter'
   #   static_configs:
   #     - targets: ['redis_exporter:9121']
-
-  - job_name: 'minio'
-    metrics_path: /minio/v2/metrics/cluster
-    static_configs:
-      - targets: ['minio:9000']

@@ -118,28 +118,28 @@ services:
       - proxy
     restart: unless-stopped
 
-  # postgres_exporter:
-  #   image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
-  #   container_name: postgres_exporter
-  #   environment:
-  #     - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
-  #   networks:
-  #     - proxy
-  #     - dbnet
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - prometheus
+  postgres_exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres_exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@haproxy:5432/postgres?sslmode=disable
+    networks:
+      - proxy
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      - prometheus
 
-  # haproxy_exporter:
-  #   image: prom/haproxy-exporter:v0.15.0
-  #   container_name: haproxy_exporter
-  #   command:
-  #     - --haproxy.scrape-uri=http://haproxy:7000/;csv
-  #   networks:
-  #     - proxy
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - prometheus
+  haproxy_exporter:
+    image: prom/haproxy-exporter:v0.15.0
+    container_name: haproxy_exporter
+    command:
+      - --haproxy.scrape-uri=http://haproxy:7000/;csv
+    networks:
+      - proxy
+    restart: unless-stopped
+    depends_on:
+      - prometheus
 
   # redis_exporter:
   #   image: oliver006/redis_exporter:v1.66.0
