@@ -1,3 +1,5 @@
+name: postgresDb
+
 services:
   # Etcd - Distributed consensus for Patroni (like Galera's group communication)
   etcd1:
@@ -111,7 +113,7 @@ services:
       - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
       - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
       - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni1:8008
-      - PATRONI_POSTGRESQL_PGPASS=/tmp/pgpass
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
       - PATRONI_SUPERUSER_USERNAME=postgres
       - PATRONI_SUPERUSER_PASSWORD=postgres
       - PATRONI_REPLICATION_USERNAME=replicator
@@ -167,7 +169,7 @@ services:
       - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
       - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
       - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni2:8008
-      - PATRONI_POSTGRESQL_PGPASS=/tmp/pgpass
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
       - PATRONI_SUPERUSER_USERNAME=postgres
       - PATRONI_SUPERUSER_PASSWORD=postgres
       - PATRONI_REPLICATION_USERNAME=replicator
@@ -223,7 +225,7 @@ services:
       - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
       - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
       - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni3:8008
-      - PATRONI_POSTGRESQL_PGPASS=/tmp/pgpass
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
       - PATRONI_SUPERUSER_USERNAME=postgres
       - PATRONI_SUPERUSER_PASSWORD=postgres
       - PATRONI_REPLICATION_USERNAME=replicator

@@ -13,14 +13,23 @@ fi
 chown -R postgres:postgres /var/lib/postgresql
 chmod 700 /var/lib/postgresql/data
 
-# Create pgpass file for authentication
-cat > ${PATRONI_POSTGRESQL_PGPASS} <<EOF
+# Create pgpass file for authentication (use a stable, writable path)
+# Default to /var/lib/postgresql/.pgpass if not provided
+PATRONI_POSTGRESQL_PGPASS="${PATRONI_POSTGRESQL_PGPASS:-/var/lib/postgresql/.pgpass}"
+
+# Ensure parent directory exists and is owned by postgres
+install -d -o postgres -g postgres -m 700 "$(dirname "${PATRONI_POSTGRESQL_PGPASS}")"
+
+# Create atomically with restrictive permissions
+umask 077
+tmpfile="$(mktemp "${PATRONI_POSTGRESQL_PGPASS}.tmp.XXXXXX")"
+cat > "${tmpfile}" <<EOF
 *:*:*:${PATRONI_SUPERUSER_USERNAME}:${PATRONI_SUPERUSER_PASSWORD}
 *:*:*:${PATRONI_REPLICATION_USERNAME}:${PATRONI_REPLICATION_PASSWORD}
 *:*:*:${POSTGRES_USER}:${POSTGRES_PASSWORD}
 EOF
-chmod 600 ${PATRONI_POSTGRESQL_PGPASS}
-chown postgres:postgres ${PATRONI_POSTGRESQL_PGPASS}
+chown postgres:postgres "${tmpfile}"
+mv -f "${tmpfile}" "${PATRONI_POSTGRESQL_PGPASS}"
 
 # Wait for etcd to be ready
 echo "Waiting for etcd cluster..."
