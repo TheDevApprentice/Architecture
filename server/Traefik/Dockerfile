@@ -1,7 +1,7 @@
 # server/Traefik/Dockerfile
-FROM traefik:v2.11 as traefik
-
 ARG NODE_ENV
+
+FROM traefik:v2.11 as traefik
 
 FROM traefik as build_dev
 ONBUILD COPY traefik.dev.yml /etc/traefik/traefik.yml
