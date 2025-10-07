@@ -14,8 +14,8 @@ RUN chmod +x /usr/local/bin/minio-entrypoint.sh
 
 # Default environment (can be overridden by compose)
 
-# ENV MINIO_ROOT_USER=admin
-# ENV MINIO_ROOT_PASSWORD=adminadmin123
+ENV MINIO_ROOT_USER=${MINIO_ROOT_USER}
+ENV MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
 # ENV S3_BUCKET=bucket
 # ENV S3_BUCKETS=bucket1,bucket2
 # ENV MINIO_PUBLIC=true

@@ -2,12 +2,14 @@
 FROM ghcr.io/gethomepage/homepage:latest
 
 # Build-time defaults (override with --build-arg TZ=...)
-ARG TZ=Europe/Paris
+ARG TZ=${TZ}
+ARG NODE_ENV=${NODE_ENV}
+ARG HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
 
 # Runtime environment
 ENV TZ=${TZ} \
-    NODE_ENV=production \
-    HOMEPAGE_ALLOWED_HOSTS=homepage.localhost,homepage.localhost:80,localhost,localhost:80,127.0.0.1
+    NODE_ENV=${NODE_ENV} \
+    HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
 
 # Install minimal packages (tzdata, CA certs, curl), set timezone, and create non-root user
 # Note: base is Alpine-based, so use apk
@@ -19,8 +21,8 @@ RUN apk add --no-cache tzdata ca-certificates curl \
   && mkdir -p /app/public/images /app/public/icons /app/config \
   && chown -R app:app /app
 
-# Copy your configuration and assets into the image
-# Make sure these paths exist in your repo:
+# Copy the configuration and assets into the image
+# Make sure these paths exist in the repo:
 # - server/Homepage/config/
 # - server/Homepage/public/images/
 # - server/Homepage/public/icons/

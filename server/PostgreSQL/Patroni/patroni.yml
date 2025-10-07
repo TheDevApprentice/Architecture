@@ -1,0 +1,117 @@
+scope: postgres-cluster
+namespace: /service
+name: ${PATRONI_NAME}
+
+etcd3:
+  hosts: ${PATRONI_ETCD3_HOSTS}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${PATRONI_RESTAPI_CONNECT_ADDRESS}
+  
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 5
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    master_start_timeout: 300
+    synchronous_mode: true
+    synchronous_mode_strict: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        # Performance tuning (similaire à votre config MariaDB)
+        max_connections: 200
+        shared_buffers: 256MB
+        effective_cache_size: 1GB
+        maintenance_work_mem: 64MB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 1310kB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        max_worker_processes: 4
+        max_parallel_workers_per_gather: 2
+        max_parallel_workers: 4
+        max_parallel_maintenance_workers: 2
+        
+        # Replication settings (synchronous comme Galera)
+        wal_level: replica
+        hot_standby: on
+        wal_keep_size: 1GB
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby_feedback: on
+        
+        # Logging
+        log_destination: stderr
+        logging_collector: on
+        log_directory: /var/lib/postgresql/data/pg_log
+        log_filename: postgresql-%Y-%m-%d_%H%M%S.log
+        log_rotation_age: 1d
+        log_rotation_size: 100MB
+        log_line_prefix: '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+        log_checkpoints: on
+        log_connections: on
+        log_disconnections: on
+        log_lock_waits: on
+        log_temp_files: 0
+        log_autovacuum_min_duration: 0
+        log_error_verbosity: default
+        
+        # Archive mode (pour backup)
+        archive_mode: on
+        archive_command: 'test ! -f /var/lib/postgresql/data/wal_archive/%f && cp %p /var/lib/postgresql/data/wal_archive/%f'
+        archive_timeout: 300
+        
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+    - local all all trust
+
+  users:
+    admin:
+      password: ${PATRONI_admin_PASSWORD}
+      options:
+        - createrole
+        - createdb
+    replicator:
+      password: ${PATRONI_REPLICATION_PASSWORD}
+      options:
+        - replication
+
+  post_bootstrap: /docker-entrypoint-initdb.d/init.sh
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${PATRONI_POSTGRESQL_CONNECT_ADDRESS}
+  data_dir: ${PATRONI_POSTGRESQL_DATA_DIR}
+  pgpass: ${PATRONI_POSTGRESQL_PGPASS}
+  authentication:
+    replication:
+      username: ${PATRONI_REPLICATION_USERNAME}
+      password: ${PATRONI_REPLICATION_PASSWORD}
+    superuser:
+      username: ${PATRONI_SUPERUSER_USERNAME}
+      password: ${PATRONI_SUPERUSER_PASSWORD}
+    rewind:
+      username: ${PATRONI_REPLICATION_USERNAME}
+      password: ${PATRONI_REPLICATION_PASSWORD}
+  parameters:
+    unix_socket_directories: '/var/run/postgresql'
+
+  nofailover: ${PATRONI_TAGS_NOFAILOVER:-false}
+  noloadbalance: ${PATRONI_TAGS_NOLOADBALANCE:-false}
+  clonefrom: ${PATRONI_TAGS_CLONEROM:-false}
+
+watchdog:
+  mode: off
