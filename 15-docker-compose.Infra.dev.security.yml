@@ -41,7 +41,7 @@ services:
     command: ["start"]
     networks:
       - proxy
-      - dbnet
+      - keycloaknet
     restart: unless-stopped
     volumes:
       - keycloak_data:/opt/keycloak/data
@@ -56,21 +56,9 @@ networks:
       driver: default
       config:
         - subnet: 172.30.0.0/24
-  dbnet:
-    name: dbnet
+  keycloaknet:
+    name: keycloaknet
     ipam:
       driver: default
       config:
-        - subnet: 172.31.10.0/24
-  cachenet:
-    name: cachenet
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.31.20.0/24
-  stornet:
-    name: stornet
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.31.30.0/24
+        - subnet: 172.31.40.0/24
