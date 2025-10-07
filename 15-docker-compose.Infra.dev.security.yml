@@ -1,0 +1,91 @@
+name: security
+
+services:
+  # Identity Provider - Keycloak (Quarkus)
+  keycloak:
+    build:
+      context: ./server/Keycloak
+      dockerfile: Dockerfile
+    image: keycloak:dev
+    container_name: keycloak
+    environment:
+      KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
+      # Database via ProxySQL on dbnet
+      KC_DB: ${KC_DB_TYPE}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_DB_URL: ${KC_DB_URL}
+      # Admin bootstrap (dev only; move to secrets later)
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      # Reverse proxy awareness
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_PROXY: ${KC_PROXY}
+      KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT}"
+      # KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+      KC_METRICS_ENABLED: "${KC_METRICS_ENABLED}"
+      KC_HEALTH_ENABLED: "${KC_HEALTH_ENABLED}"
+      # OpenTelemetry traces -> OTel Collector -> Tempo
+      KC_FEATURES: ${KC_FEATURES}
+      KC_OPENTELEMETRY_ENDPOINT: ${KC_OPENTELEMETRY_ENDPOINT}
+      KC_OPENTELEMETRY_PROTOCOL: ${KC_OPENTELEMETRY_PROTOCOL}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.${HOST}`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=${KC_LOADBALENCER_SERVER_PORT}"
+      - "traefik.http.routers.keycloak.service=keycloak"
+      - "traefik.http.routers.keycloak.priority=100"
+      - "traefik.docker.network=proxy"
+    command: ["start"]
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - proxy
+      - keycloaknet
+    restart: unless-stopped
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+  # Dedicated Postgres for Keycloak
+  postgres-keycloak:
+    build:
+      context: ./server/Keycloak/db
+      dockerfile: Dockerfile
+    image: postgres-keycloak:16
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME}
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - keycloaknet
+    restart: unless-stopped
+      
+volumes:
+  keycloak_data:
+  postgres_keycloak_data:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  keycloaknet:
+    name: keycloaknet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.40.0/24

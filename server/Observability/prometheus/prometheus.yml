@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    stack: observability
+
+scrape_configs:
+- job_name: 'keycloak'
+  metrics_path: /metrics
+  static_configs:
+    - targets: ['keycloak:9000']
+      labels:
+        instance: 'keycloak'
+
+- job_name: 'traefik'
+  metrics_path: /metrics
+  static_configs:
+    - targets: ['traefik:9100']
+      labels:
+        instance: 'traefik'
+
+- job_name: 'minio'
+  metrics_path: /minio/v2/metrics/cluster
+  static_configs:
+    - targets: ['minio:9000']
+      labels:
+        instance: 'minio'
+
+- job_name: 'postgres_exporter'
+  static_configs:
+    - targets: ['postgres_exporter:9187']
+      labels:
+        instance: 'postgres'
+
+- job_name: 'haproxy_exporter'
+  static_configs:
+    - targets: ['haproxy_exporter:9101']
+      labels:
+        instance: 'haproxy'
+
+- job_name: 'cadvisor'
+  static_configs:
+    - targets: ['cadvisor:8080']
+      labels:
+        instance: 'cadvisor'
+
+- job_name: 'etcd'
+  metrics_path: /metrics
+  static_configs:
+    - targets: ['etcd1:2379', 'etcd2:2379', 'etcd3:2379']

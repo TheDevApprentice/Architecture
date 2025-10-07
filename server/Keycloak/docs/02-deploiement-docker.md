@@ -10,7 +10,7 @@
 - Accès: `http://auth.localhost:8081`
 
 ## Variables principales (Keycloak)
-- `KC_DB=postgres`, `KC_DB_URL=jdbc:postgresql://pgpool:5432/keycloak`
+- `KC_DB_TYPE=postgres`, `KC_DB_URL=jdbc:postgresql://pgpool:5432/keycloak`
 - `KC_DB_USERNAME`, `KC_DB_PASSWORD`
 - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`
 - `KC_PROXY=edge`, `KC_HOSTNAME`
