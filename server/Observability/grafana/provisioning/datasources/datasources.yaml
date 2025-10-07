@@ -7,9 +7,9 @@ deleteDatasources:
     orgId: 1
   - name: Tempo
     orgId: 1
-  - name: Postgres (RO)
+  - name: Postgres Cluster (RO)
     orgId: 1
-  - name: Postgres keycloak (RO)
+  - name: Postgres Keycloak (RO)
     orgId: 1
 
 datasources:
@@ -46,7 +46,7 @@ datasources:
         tags:
           - service.name
 
-  - name: Postgres (RO)
+  - name: Postgres Cluster (RO)
     uid: postgresql
     type: postgres
     access: proxy
@@ -61,17 +61,17 @@ datasources:
     secureJsonData:
       password: postgres
 
-  - name: Postgres keycloak (RO)
+  - name: Postgres Keycloak (RO)
     uid: postgresql_keycloak
-    type: postgres
+    type: ${KC_DB_TYPE}
     access: proxy
-    url: haproxy:5432
-    user: postgres
-    database: keycloak
-    editable: true
+    url: postgres-keycloak:5432
+    user: ${KC_DB_USERNAME}
+    database: ${KC_DB_NAME}
+    editable: false
     jsonData:
       sslmode: disable
       postgresVersion: 1500
       timescaledb: false
     secureJsonData:
-      password: postgres
+      password: ${KC_DB_PASSWORD}

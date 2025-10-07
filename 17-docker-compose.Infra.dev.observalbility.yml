@@ -17,6 +17,7 @@ services:
       - proxy
       - dbnet
       - cachenet
+      - keycloaknet
     restart: unless-stopped
 
   grafana:
@@ -173,3 +174,9 @@ networks:
       driver: default
       config:
         - subnet: 172.31.30.0/24
+  keycloaknet:
+    name: keycloaknet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.40.0/24

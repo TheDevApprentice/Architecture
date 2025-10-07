@@ -11,7 +11,7 @@ services:
     environment:
       KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
       # Database via ProxySQL on dbnet
-      KC_DB: ${KC_DB}
+      KC_DB: ${KC_DB_TYPE}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       KC_DB_URL: ${KC_DB_URL}
@@ -39,15 +39,42 @@ services:
       - "traefik.http.routers.keycloak.priority=100"
       - "traefik.docker.network=proxy"
     command: ["start"]
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
     networks:
       - proxy
       - keycloaknet
     restart: unless-stopped
     volumes:
       - keycloak_data:/opt/keycloak/data
+
+  # Dedicated Postgres for Keycloak
+  postgres-keycloak:
+    build:
+      context: ./server/Keycloak/db
+      dockerfile: Dockerfile
+    image: postgres-keycloak:16
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME}
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - keycloaknet
+    restart: unless-stopped
       
 volumes:
   keycloak_data:
+  postgres_keycloak_data:
 
 networks:
   proxy:

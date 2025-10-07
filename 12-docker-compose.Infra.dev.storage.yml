@@ -11,11 +11,6 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_PROMETHEUS_AUTH_TYPE=${MINIO_PROMETHEUS_AUTH_TYPE}
-      # - S3_BUCKET=bucket # Un-comment if you want to create a bucket
-      # - S3_BUCKETS=bucket1,bucket2 # Un-comment if you want to create multiple buckets
-      # - MINIO_PUBLIC=true # Un-comment if you want to make MinIO public (not recommended for production)
-    # ports:
-    #   - "127.0.0.1:9001:9001" # MinIO Console
     volumes:
       - minio_data:/data
     restart: unless-stopped
@@ -32,14 +27,13 @@ services:
       - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
       - "traefik.http.services.minio.loadbalancer.server.port=${MINIO_PATH_LOADBALENCER_SERVER_PORT}"
       - "traefik.http.routers.minio.priority=100"
-
       # Route rule -> Minio (HTTP)
       - "traefik.http.routers.minio-storage.rule=Host(`storage.${HOST}`)"
       - "traefik.http.routers.minio-storage.entrypoints=web"
       - "traefik.http.routers.minio-storage.priority=2"
       - "traefik.http.routers.minio-storage.service=minio-storage"
       - "traefik.http.services.minio-storage.loadbalancer.server.port=${MINIO_STORAGE_LOADBALENCER_SERVER_PORT}"
-
+      # Network
       - "traefik.docker.network=proxy"
 
   redis:
@@ -49,7 +43,6 @@ services:
     image: redis:latest
     container_name: redis
     environment:
-      # Set a strong password here (dev example)
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
@@ -59,7 +52,7 @@ services:
     restart: unless-stopped
     # No Traefik labels here: Redis is TCP on 6379 (not HTTP). Keep it internal.
 
-  # LEAVE IT COMMENTED
+  # LEAVE IT COMMENTED IF YOU DON'T NEED IT
   # redis-commander:
   #   image: rediscommander/redis-commander:latest
   #   restart: unless-stopped

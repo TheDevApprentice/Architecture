@@ -13,5 +13,5 @@
  # Démarrer Redis avec AOF activé (appendonly yes)
  # Vous pouvez ajuster la politique d'AOF selon vos besoins (appendfsync everysec par défaut)
  # Si la variable d'environnement REDIS_PASSWORD est définie, on ajoute --requirepass dynamiquement.
- ENV REDIS_PASSWORD=
+ ENV REDIS_PASSWORD=${REDIS_PASSWORD}
  CMD ["sh","-lc","exec redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]

@@ -3,31 +3,39 @@ name: base
 services:
   # Reverse proxy / gateway (Traefik)
   traefik:
-    image: traefik:v2.11
+    build:
+      context: ./server/Traefik
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=${NODE_ENV}
+    image: traefik:latest
     container_name: traefik
     ports:
       - "80:80"
       # - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
-      # - "9100:9100" # Un-comment if you want to access the Traefik metrics from host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./server/Traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
-      - ./server/Traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
       - proxy
     restart: unless-stopped
 
   # Homepage
   homepage:
-    image: ghcr.io/gethomepage/homepage:latest
+    build:
+      context: ./server/Homepage
+      dockerfile: Dockerfile
+      args:
+        - TZ=${TZ}
+        - NODE_ENV=${NODE_ENV}
+        - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+    image: homepage:latest
     container_name: homepage
-    environment:
-      # Allow hostnames served via Traefik host rule
-      - HOMEPAGE_ALLOWED_HOSTS=homepage.${HOST},homepage.${HOST}:80,${HOST},${HOST}:80,127.0.0.1
     volumes:
+      # # DEV only :
       - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
       - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
       - ./server/Homepage/config:/app/config            # Répertoire des configurations localisé à côté du docker-compose
+      # #
       - homepage_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -106,7 +114,6 @@ volumes:
   homepage_data:
   traefik_data:
   registry_data:
-  turn_data:
 
 networks:
   proxy:
