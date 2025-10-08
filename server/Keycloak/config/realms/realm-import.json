@@ -2,11 +2,20 @@
   "realm": "internal",
   "enabled": true,
   "displayName": "Internal",
+  "displayNameHtml": "Internal <small>SSO</small>",
+  "attributes": {
+    "frontendUrl": ""
+  },
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
+  "loginTheme": "keycloak.v2",
+  "accountTheme": "keycloak.v3",
+  "adminTheme": "keycloak.v2",
+  "emailTheme": "keycloak",
 
   "roles": {
     "realm": [
@@ -24,7 +33,14 @@
   "groups": [
     {
       "name": "IT",
-      "realmRoles": ["config_service", "view_service"]
+      "realmRoles": ["config_service", "view_service"],
+      "clientRoles": {
+        "account": [
+          "view-profile",
+          "manage-account",
+          "view-applications"
+        ]
+      }
     }
   ],
 
