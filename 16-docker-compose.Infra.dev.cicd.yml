@@ -12,7 +12,7 @@ services:
       - TZ=${TZ}
       - HOST=${HOST}
     volumes:
-      - .server/jenkins/data:/var/jenkins_home
+      - ./server/jenkins/data:/var/jenkins_home
     restart: unless-stopped
     networks:
       - proxy
