@@ -1,0 +1,50 @@
+{
+  "realm": "internal",
+  "enabled": true,
+  "displayName": "Internal",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "config_service",
+        "description": "Access to configure internal services"
+      },
+      {
+        "name": "view_service",
+        "description": "View-only access to internal services"
+      }
+    ]
+  },
+
+  "groups": [
+    {
+      "name": "IT",
+      "realmRoles": ["config_service", "view_service"]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "hugo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Hugo",
+      "lastName": "User",
+      "email": "hugo@example.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["IT"]
+    }
+  ]
+}
