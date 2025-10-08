@@ -10,6 +10,7 @@ services:
     container_name: keycloak
     environment:
       NODE_ENV: ${NODE_ENV}
+      HOST: ${HOST}
       KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
       # Database via ProxySQL on dbnet
       KC_DB: ${KC_DB_TYPE}
