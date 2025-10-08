@@ -1,0 +1,37 @@
+name: CI/CD/DEVOPS
+services:
+  jenkins:
+    container_name: jenkins
+    build:
+      context: ./server/jenkins
+      dockerfile: Dockerfile
+    image: jenkins-lts:latest
+    ports:
+      - "${JENKINS_AGENT_PORT}:50000"
+    environment:
+      - TZ=${TZ}
+      - HOST=${HOST}
+    volumes:
+      - ./data:/var/jenkins_home
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jenkins.rule=Host(`jenkins.${HOST}`)"
+      - "traefik.http.routers.jenkins.entrypoints=web"
+      - "traefik.http.services.jenkins.loadbalancer.server.port=${JENKINS_HTTP_PORT}"
+      - "traefik.http.routers.jenkins.service=jenkins"
+      - "traefik.http.routers.jenkins.priority=100"
+      - "traefik.docker.network=proxy"
+
+volumes:
+  jenkins_home:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24

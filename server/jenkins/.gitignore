@@ -37,6 +37,3 @@ yarn-error.log*
 /interface/dist/
 /interface/.env
 /interface/package-lock.json
-
-# Jenkins
-/server/jenkins/data/
