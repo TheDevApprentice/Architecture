@@ -39,4 +39,5 @@ yarn-error.log*
 /interface/package-lock.json
 
 # Jenkins
-/server/jenkins/data/
+/server/jenkins/data
+/server/jenkins/data/*
