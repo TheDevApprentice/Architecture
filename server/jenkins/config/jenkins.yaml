@@ -16,7 +16,7 @@ jenkins:
       logoutFromOpenidProvider: true
       rootURLFromRequest: true
       sendScopesInTokenRequest: true
-      postLogoutRedirectUrl: "http://jenkins.${HOST}"
+      postLogoutRedirectUrl: "http://${JENKINS_URL}"
       # Security (Keycloak over HTTP in dev)
       disableSslVerification: true
       # Properties
@@ -24,7 +24,7 @@ jenkins:
         - "pkce"
       serverConfiguration:
         wellKnown:
-          wellKnownOpenIDConfigurationUrl: "http://auth.${HOST}/realms/internal/.well-known/openid-configuration"
+          wellKnownOpenIDConfigurationUrl: "http://${KC_URL}/realms/${KC_REALM}/.well-known/openid-configuration"
           scopesOverride: "openid profile email"
   authorizationStrategy:
     globalMatrix:
@@ -66,4 +66,4 @@ jenkins:
 unclassified:
   location:
     adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"
-    url: "http://jenkins.${HOST}/"
+    url: "http://${JENKINS_URL}"

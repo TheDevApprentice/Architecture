@@ -76,12 +76,12 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "rootUrl": "http://jenkins.${HOST}",
-      "baseUrl": "http://jenkins.${HOST}",
+      "rootUrl": "http://${JENKINS_URL}",
+      "baseUrl": "http://${JENKINS_URL}",
       "redirectUris": [
-        "http://jenkins.${HOST}/*",
-        "http://jenkins.${HOST}/securityRealm/finishLogin",
-        "http://jenkins.${HOST}/OicLogout"
+        "http://${JENKINS_URL}/*",
+        "http://${JENKINS_URL}/securityRealm/finishLogin",
+        "http://${JENKINS_URL}/OicLogout"
       ],
       "webOrigins": ["+"],
       "attributes": {
