@@ -27,12 +27,12 @@ services:
       - ./server/jenkins/data:/var/jenkins_home
     restart: unless-stopped
     extra_hosts:
-      - "auth.${HOST}:host-gateway"
+      - "${KC_URL}:host-gateway"
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.jenkins.rule=Host(`jenkins.${HOST}`)"
+      - "traefik.http.routers.jenkins.rule=Host(`${JENKINS_URL}`)"
       - "traefik.http.routers.jenkins.entrypoints=web"
       - "traefik.http.services.jenkins.loadbalancer.server.port=${JENKINS_HTTP_PORT}"
       - "traefik.http.routers.jenkins.service=jenkins"

@@ -5,7 +5,7 @@ FROM jenkins/jenkins:lts-jdk21
 # Optional: set timezone inside the container (overridden by JAVA_OPTS/TZ if provided)
 ENV TZ=${TZ}
 ENV JAVA_OPTS=${JAVA_OPTS}
-# ENV JENKINS_OPTS=${JENKINS_OPTS}
+ENV JENKINS_OPTS=${JENKINS_OPTS}
 
 # Expose Jenkins web and inbound agent ports
 EXPOSE 8080 50000
@@ -35,6 +35,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
       ca-certificates \
       curl \
+      jq \
       gnupg \
       git \
       openssh-client \
@@ -51,5 +52,10 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin; \
     rm -rf /var/lib/apt/lists/*
 
-# Switch back to jenkins user
+# Bootstrap entrypoint to auto-fetch Keycloak client secret at runtime
+COPY ./config/entrypoint.sh /usr/local/bin/jenkins-entrypoint.sh
+RUN chmod +x /usr/local/bin/jenkins-entrypoint.sh
+
+# Switch back to jenkins user and use our entrypoint (which execs jenkins.sh)
 USER jenkins
+ENTRYPOINT ["/usr/local/bin/jenkins-entrypoint.sh"]
