@@ -1,0 +1,43 @@
+jenkins:
+  systemMessage: "Configured by JCasC dev - Welcome to Jenkins"
+  securityRealm:
+    oic:
+      # Credentials
+      clientId: "jenkins"
+      clientSecret: "${OIDC_CLIENT_SECRET}"
+      # claims (JMES paths in ID token/userinfo)
+      userIdStrategy: "caseInsensitive"
+      userNameField: "preferred_username"
+      groupsFieldName: "groups"
+      groupIdStrategy: "caseInsensitive"
+      fullNameFieldName: "name"
+      emailFieldName: "email"
+      # advanced configuration
+      logoutFromOpenidProvider: true
+      rootURLFromRequest: true
+      sendScopesInTokenRequest: true
+      postLogoutRedirectUrl: "http://jenkins.${HOST}"
+      # Security (Keycloak over HTTP in dev)
+      disableSslVerification: true
+      # Properties
+      properties:
+        - "pkce"
+      serverConfiguration:
+        wellKnown:
+          wellKnownOpenIDConfigurationUrl: "http://auth.${HOST}/realms/internal/.well-known/openid-configuration"
+          scopesOverride: "openid profile email"
+  authorizationStrategy:
+    globalMatrix:
+      entries:
+        - group:
+            name: IT
+            permissions:
+              - Overall/Administer
+        - group:
+            name: authenticated
+            permissions:
+              - Overall/Read
+unclassified:
+  location:
+    adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"
+    url: "http://jenkins.${HOST}/"

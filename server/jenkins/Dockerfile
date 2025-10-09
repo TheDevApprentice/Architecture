@@ -1,8 +1,11 @@
 # Minimal Jenkins LTS image
 # Builds on top of the official Jenkins image to allow future customization
-FROM jenkins/jenkins:lts-jdk17
+FROM jenkins/jenkins:lts-jdk21
 
+# Optional: set timezone inside the container (overridden by JAVA_OPTS/TZ if provided)
 ENV TZ=${TZ}
+ENV JAVA_OPTS=${JAVA_OPTS}
+# ENV JENKINS_OPTS=${JENKINS_OPTS}
 
 # Expose Jenkins web and inbound agent ports
 EXPOSE 8080 50000
@@ -16,7 +19,11 @@ EXPOSE 8080 50000
 # -----------------------------
 # Copy plugin list and install via official CLI
 USER root
-COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+COPY ./config/plugins.txt /usr/share/jenkins/ref/plugins.txt
+
+RUN mkdir -p /usr/share/jenkins/ref/casc_configs
+COPY ./config/jenkins.yaml /usr/share/jenkins/ref/casc_configs/jenkins.yaml
+
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
 
 # -----------------------------
