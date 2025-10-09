@@ -314,14 +314,6 @@ volumes:
 
 networks:
   proxy:
-    name: proxy
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.30.0.0/24
+    external: true
   dbnet:
-    name: dbnet
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.31.10.0/24
+    external: true

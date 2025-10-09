@@ -12,7 +12,7 @@ services:
     container_name: traefik
     ports:
       - "80:80"
-      # - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
+      - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:

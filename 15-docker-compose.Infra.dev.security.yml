@@ -12,6 +12,9 @@ services:
       NODE_ENV: ${NODE_ENV}
       HOST: ${HOST}
       KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
+      KC_URL: ${KC_URL}
+      JENKINS_URL: ${JENKINS_URL}
+
       # Database via ProxySQL on dbnet
       KC_DB: ${KC_DB_TYPE}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
@@ -34,7 +37,7 @@ services:
       KC_LOG_LEVEL: ${KC_LOG_LEVEL}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=Host(`auth.${HOST}`)"
+      - "traefik.http.routers.keycloak.rule=Host(`${KC_URL}`)"
       - "traefik.http.routers.keycloak.entrypoints=web"
       - "traefik.http.services.keycloak.loadbalancer.server.port=${KC_LOADBALENCER_SERVER_PORT}"
       - "traefik.http.routers.keycloak.service=keycloak"
@@ -90,11 +93,7 @@ volumes:
 
 networks:
   proxy:
-    name: proxy
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.30.0.0/24
+    external: true
   keycloaknet:
     name: keycloaknet
     ipam:
