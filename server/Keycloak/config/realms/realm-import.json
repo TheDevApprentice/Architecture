@@ -27,7 +27,13 @@
         "name": "view_service",
         "description": "View-only access to internal services"
       }
-    ]
+    ],
+    "client": {
+      "jenkins": [
+        { "name": "admin", "description": "Jenkins administrators" },
+        { "name": "user", "description": "Jenkins standard users" }
+      ]
+    }
   },
 
   "groups": [
@@ -39,8 +45,49 @@
           "view-profile",
           "manage-account",
           "view-applications"
+        ],
+        "jenkins": [
+          "admin"
         ]
       }
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "jenkins",
+      "name": "Jenkins",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://jenkins.${HOST}",
+      "baseUrl": "http://jenkins.${HOST}",
+      "redirectUris": [
+        "http://jenkins.${HOST}/*",
+        "http://jenkins.${HOST}/securityRealm/finishLogin",
+        "http://jenkins.${HOST}/OicLogout"
+      ],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
     }
   ],
 
