@@ -34,9 +34,35 @@ jenkins:
             permissions:
               - Overall/Administer
         - group:
-            name: authenticated
+            name: Jenkins
             permissions:
               - Overall/Read
+              # Agents
+              - Agent/Connect
+              - Agent/Create
+              - Agent/Configure
+              - Agent/Disconnect
+              - Agent/Delete
+              # Jobs
+              - Job/Discover
+              - Job/Read
+              - Job/Create
+              - Job/Configure
+              - Job/Build
+              - Job/Move
+              - Job/Delete
+              # Runs
+              - Run/Delete
+              - Run/Replay
+              # Views
+              - View/Read
+              - View/Create
+              - View/Configure
+              - View/Delete
+        # - group:
+        #     name: authenticated
+        #     permissions:
+        #       - Overall/Read
 unclassified:
   location:
     adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"

@@ -50,6 +50,20 @@
           "admin"
         ]
       }
+    },
+    {
+      "name": "Jenkins",
+      "realmRoles": ["view_service"],
+      "clientRoles": {
+        "account": [
+          "view-profile",
+          "manage-account",
+          "view-applications"
+        ],
+        "jenkins": [
+          "user"
+        ]
+      }
     }
   ],
 
@@ -108,6 +122,23 @@
       ],
       "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
       "groups": ["IT"]
+    },
+    {
+      "username": "fred",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Frédéric",
+      "lastName": "User",
+      "email": "fred@example.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["Jenkins"]
     }
   ]
 }
