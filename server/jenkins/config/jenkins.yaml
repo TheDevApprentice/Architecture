@@ -59,10 +59,7 @@ jenkins:
               - View/Create
               - View/Configure
               - View/Delete
-        # - group:
-        #     name: authenticated
-        #     permissions:
-        #       - Overall/Read
+            
 unclassified:
   location:
     adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"

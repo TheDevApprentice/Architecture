@@ -12,7 +12,7 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
-  "loginTheme": "keycloak.v2",
+  "loginTheme": "jenkins",
   "accountTheme": "keycloak.v3",
   "adminTheme": "keycloak.v2",
   "emailTheme": "keycloak",
@@ -83,9 +83,10 @@
         "http://${JENKINS_URL}/securityRealm/finishLogin",
         "http://${JENKINS_URL}/OicLogout"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": ["http://${JENKINS_URL}"],
       "attributes": {
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "login_theme": "jenkins"
       },
       "protocolMappers": [
         {
@@ -139,6 +140,22 @@
       ],
       "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
       "groups": ["Jenkins"]
+    },
+    {
+      "username": "test",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "test@example.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"]
     }
   ]
 }
