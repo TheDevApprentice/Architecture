@@ -9,13 +9,11 @@ services:
     image: jenkins-lts:latest
     ports:
       - "${JENKINS_AGENT_PORT}:50000"
+      - "${JENKINS_SSH_PORT}:2222"
     environment:
       - TZ=${TZ}
       - HOST=${HOST}
       - CASC_JENKINS_CONFIG=/usr/share/jenkins/ref/casc_configs/jenkins.yaml
-      # OIDC client secret is fetched automatically at startup if not provided
-      # - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-      # Keycloak bootstrap for auto-fetching the Jenkins client secret
       - JENKINS_URL=${JENKINS_URL}
       - KC_URL=${KC_URL}
       - KC_REALM=internal
