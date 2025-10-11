@@ -68,14 +68,5 @@ fetch_secret() {
   echo "[entrypoint] Retrieved OIDC client secret for ${OIDC_CLIENT_ID}."
 }
 
-# Only fetch if not already provided (via env or docker secret->env)
-if [ -z "${OIDC_CLIENT_SECRET:-}" ]; then
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "[entrypoint] jq is required for bootstrap; please ensure it is installed in the image" >&2
-  else
-    fetch_secret || echo "[entrypoint] WARNING: proceeding without OIDC_CLIENT_SECRET (login will fail)"
-  fi
-fi
-
-# Chain to the standard Jenkins entrypoint
+echo "[entrypoint] Starting Jenkins..."
 exec /usr/local/bin/jenkins.sh

@@ -3,7 +3,7 @@ jenkins:
   securityRealm:
     oic:
       # Credentials
-      clientId: "jenkins"
+      clientId: "${OIDC_CLIENT_ID}"
       clientSecret: "${OIDC_CLIENT_SECRET}"
       # claims (JMES paths in ID token/userinfo)
       userIdStrategy: "caseInsensitive"
@@ -59,7 +59,7 @@ jenkins:
               - View/Create
               - View/Configure
               - View/Delete
-            
+
 unclassified:
   location:
     adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"
