@@ -14,7 +14,8 @@ services:
       KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
       KC_URL: ${KC_URL}
       JENKINS_URL: ${JENKINS_URL}
-
+      KC_SECRET_JENKINS: ${KC_SECRET_JENKINS}
+      KC_CLIENT_ID_JENKINS: ${KC_CLIENT_ID_JENKINS}
       # Database via ProxySQL on dbnet
       KC_DB: ${KC_DB_TYPE}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
