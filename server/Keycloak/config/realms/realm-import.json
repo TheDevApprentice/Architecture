@@ -43,6 +43,13 @@
   "maxDeltaTimeSeconds": 43200,
   "failureFactor": 30,
 
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "en",
+    "fr"
+  ],
+  "defaultLocale": "en",
+  
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,

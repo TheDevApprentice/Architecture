@@ -23,60 +23,103 @@
     color: #333333;
 }
 
+/* Language selector styles */
+#kc-locale {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+}
+
+#kc-current-locale-link {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--jenkins-border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-family: var(--jenkins-font-family);
+    font-weight: 400;
+    color: var(--jenkins-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-width: 100px;
+    text-align: left;
+}
+
+#kc-current-locale-link:hover {
+    border-color: var(--jenkins-btn-blue);
+    box-shadow: 0 2px 6px rgba(11, 110, 253, 0.15);
+}
+
+#kc-current-locale-link:focus {
+    outline: none;
+    border-color: var(--jenkins-btn-blue);
+    box-shadow: 0 0 0 3px rgba(11, 110, 253, 0.1);
+}
+
+/* Add dropdown arrow */
+#kc-current-locale-link::after {
+    content: "▼";
+    font-size: 10px;
+    margin-left: 8px;
+    opacity: 0.6;
+}
+
 #kc-locale ul {
     display: none;
     position: absolute;
-    background-color: var(--background-color);
+    background: #ffffff;
     list-style: none;
     right: 0;
-    top: 20px;
+    top: calc(100% + 4px);
     min-width: 100px;
-    padding: 2px 0;
-    border: solid 1px #bbb;
+    padding: 4px 0;
+    margin: 0;
+    border: 1px solid var(--jenkins-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
 }
 
-#kc-locale:hover ul {
+#kc-locale:hover ul,
+#kc-locale-dropdown:hover ul {
     display: block;
+}
+
+#kc-locale ul li {
     margin: 0;
+    padding: 0;
 }
 
 #kc-locale ul li a {
     display: block;
-    padding: 5px 14px;
-    color: #000 !important;
+    padding: 10px 16px;
+    color: var(--jenkins-text) !important;
     text-decoration: none;
-    line-height: 20px;
+    font-size: 14px;
+    font-family: var(--jenkins-font-family);
+    font-weight: 400;
+    transition: background-color 0.15s ease;
 }
 
 #kc-locale ul li a:hover {
-    color: #4d5258;
-    background-color: var(--background-color);
+    background-color: #f3f4f6;
+    color: var(--jenkins-btn-blue) !important;
 }
 
 #kc-locale-dropdown a {
-    color: #4d5258;
-    background: 0 0;
-    padding: 0 15px 0 0;
-    font-weight: 300;
+    color: var(--jenkins-text);
+    background: transparent;
+    padding: 0;
+    font-weight: 400;
 }
 
 #kc-locale-dropdown a:hover {
     text-decoration: none;
 }
 
-a#kc-current-locale-link {
-    display: block;
-    padding: 0 5px;
-}
-
-/* a#kc-current-locale-link:hover {
-    background-color: rgba(0,0,0,0.2);
-} */
-
-a#kc-current-locale-link::after {
-    content: "\2c5";
-    margin-left: 4px;
-}
+/* Old locale link styles - replaced by new modern design above */
 
 /* Container padding removed - now handled by jenkins-form-panel */
 
@@ -349,12 +392,6 @@ a.zocial  {
     }
 
     /* Old container rule removed - using jenkins-form-panel now */
-
-    #kc-locale {
-        position: relative;
-        text-align: right;
-        z-index: 9999;
-    }
 }
 
 @media (max-width: 767px) {
@@ -403,15 +440,6 @@ a.zocial  {
     }
 
     /* Old container rule removed */
-
-    #kc-locale {
-        position: absolute;
-        width: 200px;
-        top: 20px;
-        right: 20px;
-        text-align: right;
-        z-index: 9999;
-    }
 
     #kc-logo-wrapper {
         background-size: 100px 21px;
@@ -846,10 +874,36 @@ a:hover {
         display: block !important;
     }
     
-    /* Ensure locale selector doesn't interfere */
+    /* Locale selector on mobile - top right corner like desktop */
     #kc-locale {
-        position: static !important;
-        margin-bottom: 20px !important;
+        position: absolute !important;
+        top: 20px !important;
+        right: 20px !important;
+        margin-bottom: 0 !important;
+        width: auto !important;
+    }
+    
+    #kc-locale-wrapper {
+        position: relative !important;
+    }
+    
+    #kc-locale-dropdown {
+        position: relative !important;
+    }
+    
+    #kc-current-locale-link {
+        min-width: 100px;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    #kc-locale ul {
+        left: auto !important;
+        right: 0 !important;
+        transform: none !important;
+        top: calc(100% + 4px) !important;
+        position: absolute !important;
+        min-width: 120px !important;
     }
     
     /* Input spacing */
