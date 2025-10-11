@@ -139,14 +139,14 @@
 }
 
 #kc-logo-wrapper {
-    background-image: url(../img/jenkins.svg);
+    background-image: url(../img/logo_dark.svg);
     background-repeat: no-repeat;
     height: 130px;
     margin: 62px auto 0;
 }
 
 div.kc-logo-text {
-    background-image: url(../img/jenkins.svg);
+    background-image: url(../img/logo_dark.svg);
     background-repeat: no-repeat;
     height: 130px;
     width: 100px;
@@ -599,10 +599,10 @@ html, body {
 .jenkins-branding-panel {
     width: 40%;
     background: linear-gradient(135deg, 
-        rgba(72, 120, 150, 1) 0%,
-        rgba(150, 120, 180, 0.8) 30%,
-        rgba(230, 150, 160, 0.8) 60%,
-        rgba(250, 200, 180, 1) 100%
+        rgb(60, 112, 54) 0%,
+        rgba(85, 128, 128, 0.8) 30%,
+        rgba(114, 75, 79, 0.8) 60%,
+        rgb(129, 103, 93) 100%
     );
     display: flex;
     align-items: center;
@@ -614,7 +614,7 @@ html, body {
 .jenkins-logo {
     width: 200px;
     height: 200px;
-    background: url("../img/jenkins.svg") center center / contain no-repeat;
+    background: url("../img/logo_dark") center center / contain no-repeat;
     filter: drop-shadow(0 10px 30px rgba(0,0,0,0.15));
 }
 
@@ -662,7 +662,7 @@ h1#kc-page-title {
 
 /* Add subtitle below title */
 h1#kc-page-title::after {
-    content: "Welcome to Jenkins login";
+    content: "Welcome to your organization ogin";
     display: block;
     font-size: 15px;
     font-weight: 400;

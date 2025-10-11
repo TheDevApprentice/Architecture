@@ -49,13 +49,13 @@
     "fr"
   ],
   "defaultLocale": "en",
-  
+
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
 
-  "loginTheme": "keycloak",
+  "loginTheme": "internal",
   "accountTheme": "keycloak.v3",
   "adminTheme": "keycloak.v2",
   "emailTheme": "keycloak",
@@ -259,6 +259,9 @@
       "firstName": "Hugo",
       "lastName": "User",
       "email": "hugo@example.local",
+      "attributes": {
+        "locale": "fr"
+      },
       "credentials": [
         {
           "type": "password",
@@ -276,6 +279,9 @@
       "firstName": "Frédéric",
       "lastName": "User",
       "email": "fred@example.local",
+      "attributes": {
+        "locale": "fr"
+      },
       "credentials": [
         {
           "type": "password",
@@ -293,6 +299,9 @@
       "firstName": "Test",
       "lastName": "User",
       "email": "test@example.local",
+      "attributes": {
+        "locale": "en"
+      },
       "credentials": [
         {
           "type": "password",
