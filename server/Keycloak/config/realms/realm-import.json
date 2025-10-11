@@ -48,7 +48,7 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
 
-  "loginTheme": "jenkins",
+  "loginTheme": "keycloak",
   "accountTheme": "keycloak.v3",
   "adminTheme": "keycloak.v2",
   "emailTheme": "keycloak",
@@ -129,7 +129,8 @@
 
   "clients": [
     {
-      "clientId": "jenkins",
+      "clientId": "${KC_CLIENT_ID_JENKINS}",
+      "secret": "${KC_SECRET_JENKINS}",
       "name": "Jenkins",
       "description": "Jenkins client",
       "protocol": "openid-connect",
@@ -138,7 +139,6 @@
       "clientAuthenticatorType": "client-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "secret": "${KC_SECRET_JENKINS}",
       "serviceAccountsEnabled": false,
       "adminUrl": "",
       "rootUrl": "http://${JENKINS_URL}",
@@ -252,11 +252,6 @@
       "firstName": "Hugo",
       "lastName": "User",
       "email": "hugo@example.local",
-      "attributes": {
-        "sshPublicKey": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHRlc3QtaHVnby1rZXkgZGV2IGV4YW1wbGU= hugo@dev"
-        ]
-      },
       "credentials": [
         {
           "type": "password",
@@ -359,7 +354,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\":[],\"groups\":[],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+            "{\"attributes\":[{\"name\":\"username\"},{\"name\":\"email\"},{\"name\":\"firstName\"},{\"name\":\"lastName\"}],\"groups\":[],\"unmanagedAttributePolicy\":\"ENABLED\"}"
           ]
         }
       }

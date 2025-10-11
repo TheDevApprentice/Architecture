@@ -634,7 +634,7 @@ h1#kc-page-title {
 
 /* Add subtitle below title */
 h1#kc-page-title::after {
-    content: "Welcome to login theme Jenkins";
+    content: "Welcome to Jenkins Login";
     display: block;
     font-size: 15px;
     font-weight: 400;

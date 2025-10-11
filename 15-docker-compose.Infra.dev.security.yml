@@ -59,9 +59,9 @@ services:
         reservations:
           cpus: '0.50'
           memory: 512M
-    volumes:
+    # volumes:
       # - keycloak_data:/opt/keycloak/data
-      - ./server/Keycloak/config/themes:/opt/keycloak/themes
+      # - ./server/Keycloak/config/themes:/opt/keycloak/themes
 
   # Dedicated Postgres for Keycloak
   postgres-keycloak:
