@@ -770,6 +770,7 @@ a:hover {
 @media (max-width: 960px) {
     .jenkins-login-wrapper {
         flex-direction: column;
+        min-height: 100vh;
     }
     
     .jenkins-branding-panel {
@@ -778,33 +779,143 @@ a:hover {
     
     .jenkins-form-panel {
         width: 100%;
-        padding: 20px;
+        padding: 40px 24px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    #kc-header-wrapper {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 30px;
+    .jenkins-form-panel .login-pf {
+        width: 100%;
+        max-width: 480px;
     }
     
+    /* Show logo on mobile */
     #kc-logo-wrapper {
-        background-size: 80px auto;
-        height: 80px;
-        margin: 0 auto 20px;
         display: block !important;
-    }
-}
-
-/* Very small screens */
-@media (max-width: 480px) {
-    #kc-content {
-        padding: 30px 20px;
+        background-size: 100px auto !important;
+        height: 100px !important;
+        width: 100px !important;
+        margin: 0 auto 30px !important;
     }
     
+    /* Hide realm display header (#kc-header) but NOT the form header */
+    #kc-header,
+    #kc-header-wrapper {
+        display: none !important;
+    }
+    
+    /* Show form header on mobile */
+    header.pf-c-login__header,
+    .pf-c-card__header {
+        display: block !important;
+    }
+    
+    /* Adjust title on mobile */
+    h1#kc-page-title {
+        font-size: 26px !important;
+        text-align: center !important;
+        margin-bottom: 12px !important;
+        display: block !important;
+        color: var(--jenkins-text) !important;
+    }
+    
+    h1#kc-page-title::after {
+        text-align: center !important;
+        font-size: 14px !important;
+        margin-top: 8px !important;
+        display: block !important;
+    }
+    
+    /* Form spacing on mobile */
+    .login-pf-page .card-pf {
+        padding: 0 16px;
+    }
+    
+    /* Header section on mobile */
+    header {
+        display: block !important;
+        margin-bottom: 30px !important;
+    }
+    
+    /* Force display of content wrapper on mobile */
+    .pf-c-login__main,
+    .pf-c-card,
+    .col-md-10 {
+        display: block !important;
+    }
+    
+    /* Ensure locale selector doesn't interfere */
+    #kc-locale {
+        position: static !important;
+        margin-bottom: 20px !important;
+    }
+    
+    /* Input spacing */
+    .pf-c-form-control,
+    input[type="text"],
+    input[type="password"],
+    input[type="email"] {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    label {
+        font-size: 14px;
+    }
+    
+    /* Button on mobile */
     .login-pf .btn-primary,
     input[type="submit"],
     button[type="submit"] {
-        font-size: 14px;
-        padding: 10px 16px;
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    /* Footer text */
+    #kc-info-wrapper {
+        font-size: 12px;
+    }
+    
+    /* Form group spacing on mobile */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    /* Adjust link spacing */
+    #kc-form-options {
+        margin-bottom: 16px;
+    }
+    
+    /* Form button spacing on mobile */
+    #kc-form-buttons {
+        margin-top: 20px;
+    }
+}
+
+/* Very small screens (phones in portrait) */
+@media (max-width: 480px) {
+    .jenkins-form-panel {
+        padding: 24px 20px;
+    }
+    
+    .login-pf-page .card-pf {
+        padding: 0 12px;
+    }
+    
+    /* Smaller logo on very small screens */
+    #kc-logo-wrapper {
+        background-size: 80px auto !important;
+        height: 80px !important;
+        width: 80px !important;
+        margin: 0 auto 24px !important;
+    }
+    
+    h1#kc-page-title {
+        font-size: 24px !important;
+    }
+    
+    h1#kc-page-title::after {
+        font-size: 13px !important;
     }
 }
