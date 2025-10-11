@@ -1,12 +1,15 @@
 :root {
     --background-color: #ffffff;
-    --jenkins-blue: #335061;
-    --jenkins-btn-blue: #0b6efd;
-    --jenkins-btn-hover: #0a5edb;
-    --jenkins-text: #333333;
-    --jenkins-border: #d1d5db;
-    --jenkins-font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --jenkins-text-secondary: #6b7280;
+    --primary-color: #1e40af;
+    --primary-hover: #1e3a8a;
+    --accent-color: #3b82f6;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --gradient-start: #1e40af;
+    --gradient-middle: #3b82f6;
+    --gradient-end: #60a5fa;
 }
 
 .login-pf body {
@@ -14,7 +17,7 @@
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-family);
 }
 
 .alert-error {
@@ -33,29 +36,29 @@
 
 #kc-current-locale-link {
     background: rgba(255, 255, 255, 0.95);
-    border: 1px solid var(--jenkins-border);
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     padding: 8px 16px;
     font-size: 14px;
-    font-family: var(--jenkins-font-family);
-    font-weight: 400;
-    color: var(--jenkins-text);
+    font-family: var(--font-family);
+    font-weight: 500;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     min-width: 100px;
     text-align: left;
 }
 
 #kc-current-locale-link:hover {
-    border-color: var(--jenkins-btn-blue);
-    box-shadow: 0 2px 6px rgba(11, 110, 253, 0.15);
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 #kc-current-locale-link:focus {
     outline: none;
-    border-color: var(--jenkins-btn-blue);
-    box-shadow: 0 0 0 3px rgba(11, 110, 253, 0.1);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Add dropdown arrow */
@@ -74,11 +77,11 @@
     right: 0;
     top: calc(100% + 4px);
     min-width: 100px;
-    padding: 4px 0;
+    padding: 8px 0;
     margin: 0;
-    border: 1px solid var(--jenkins-border);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 1001;
 }
 
@@ -95,24 +98,24 @@
 #kc-locale ul li a {
     display: block;
     padding: 10px 16px;
-    color: var(--jenkins-text) !important;
+    color: var(--text-primary) !important;
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--jenkins-font-family);
+    font-family: var(--font-family);
     font-weight: 400;
-    transition: background-color 0.15s ease;
+    transition: all 0.15s ease;
 }
 
 #kc-locale ul li a:hover {
-    background-color: #f3f4f6;
-    color: var(--jenkins-btn-blue) !important;
+    background-color: #f9fafb;
+    color: var(--accent-color) !important;
 }
 
 #kc-locale-dropdown a {
-    color: var(--jenkins-text);
+    color: var(--text-primary);
     background: transparent;
     padding: 0;
-    font-weight: 400;
+    font-weight: 500;
 }
 
 #kc-locale-dropdown a:hover {
@@ -128,8 +131,8 @@
 }
 
 .login-pf .btn-primary {
-    background-color: var(--jenkins-btn-blue);
-    border: solid 1px var(--jenkins-btn-blue);
+    background-color: var(--primary-color);
+    border: solid 1px var(--primary-color);
     background-image: none;
     background-repeat: none;
 }
@@ -139,14 +142,14 @@
 }
 
 #kc-logo-wrapper {
-    background-image: url(../img/logo_dark.svg);
+    background-image: url(../img/logo_dark.png);
     background-repeat: no-repeat;
     height: 130px;
     margin: 62px auto 0;
 }
 
 div.kc-logo-text {
-    background-image: url(../img/logo_dark.svg);
+    background-image: url(../img/logo_dark.png);
     background-repeat: no-repeat;
     height: 130px;
     width: 100px;
@@ -599,23 +602,99 @@ html, body {
 .jenkins-branding-panel {
     width: 40%;
     background: linear-gradient(135deg, 
-        rgb(60, 112, 54) 0%,
-        rgba(85, 128, 128, 0.8) 30%,
-        rgba(114, 75, 79, 0.8) 60%,
-        rgb(129, 103, 93) 100%
+        var(--gradient-start) 0%,
+        var(--gradient-middle) 50%,
+        var(--gradient-end) 100%
     );
+    background-size: 200% 200%;
+    animation: gradient-shift 10s ease infinite;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    overflow: hidden;
 }
 
-/* Jenkins butler logo in left panel */
+/* Add animated circles for visual interest */
+.jenkins-branding-panel::before {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    top: -200px;
+    right: -200px;
+    animation: float-circle-1 15s ease-in-out infinite;
+}
+
+.jenkins-branding-panel::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    bottom: -100px;
+    left: -100px;
+    animation: float-circle-2 20s ease-in-out infinite;
+}
+
+/* Floating geometric shapes animation */
+@keyframes float-circle-1 {
+    0%, 100% { 
+        transform: translate(0, 0) scale(1);
+    }
+    25% { 
+        transform: translate(-30px, 40px) scale(1.05);
+    }
+    50% { 
+        transform: translate(-50px, -30px) scale(0.95);
+    }
+    75% { 
+        transform: translate(20px, -40px) scale(1.02);
+    }
+}
+
+@keyframes float-circle-2 {
+    0%, 100% { 
+        transform: translate(0, 0) scale(1);
+    }
+    33% { 
+        transform: translate(40px, -20px) scale(1.08);
+    }
+    66% { 
+        transform: translate(-20px, 30px) scale(0.92);
+    }
+}
+
+/* Gradient shift animation */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Organization logo in left panel */
 .jenkins-logo {
-    width: 200px;
-    height: 200px;
-    background: url("../img/logo_dark") center center / contain no-repeat;
-    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.15));
+    width: 250px;
+    height: 250px;
+    background: url("../img/logo_dark.png") center center / contain no-repeat;
+    filter: drop-shadow(0 10px 40px rgba(0,0,0,0.2));
+    z-index: 1;
+    animation: logo-pulse 3s ease-in-out infinite;
+}
+
+/* Logo pulse animation */
+@keyframes logo-pulse {
+    0%, 100% { 
+        transform: scale(1);
+        filter: drop-shadow(0 10px 40px rgba(0,0,0,0.2));
+    }
+    50% { 
+        transform: scale(1.03);
+        filter: drop-shadow(0 15px 50px rgba(0,0,0,0.25));
+    }
 }
 
 /* Right form panel (60%) */
@@ -652,23 +731,23 @@ html, body {
 /* Show and style the page title */
 h1#kc-page-title {
     font-size: 32px;
-    font-weight: 500;
-    color: var(--jenkins-text);
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 12px;
     text-align: left;
-    font-family: var(--jenkins-font-family);
-    letter-spacing: -0.02em;
+    font-family: var(--font-family);
+    letter-spacing: -0.03em;
 }
 
 /* Add subtitle below title */
 h1#kc-page-title::after {
-    content: "Welcome to your organization ogin";
+    content: "Sign in to access your organization account";
     display: block;
     font-size: 15px;
     font-weight: 400;
-    color: var(--jenkins-text-secondary);
+    color: var(--text-secondary);
     margin-top: 10px;
-    letter-spacing: normal;
+    letter-spacing: 0;
 }
 
 /* Card styling for form */
@@ -679,6 +758,19 @@ h1#kc-page-title::after {
     padding: 0;
     max-width: 480px;
     margin: 0;
+    animation: card-appear 0.6s ease-out;
+}
+
+/* Card appear animation */
+@keyframes card-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Form inputs */
@@ -687,12 +779,12 @@ input[type="text"],
 input[type="password"],
 input[type="email"] {
     width: 100%;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-family: var(--jenkins-font-family);
-    border: 1px solid var(--jenkins-border);
-    border-radius: 6px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    padding: 13px 16px;
+    font-size: 15px;
+    font-family: var(--font-family);
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
     background: #f9fafb;
     line-height: 1.5;
     vertical-align: middle;
@@ -703,9 +795,9 @@ input[type="email"] {
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus {
-    border-color: var(--jenkins-btn-blue);
+    border-color: var(--accent-color);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(11, 110, 253, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     background: #ffffff;
 }
 
@@ -715,38 +807,65 @@ input[type="email"]:focus {
 input[type="submit"],
 button[type="submit"] {
     width: 100%;
-    padding: 14px 20px;
-    font-size: 15px;
-    font-weight: 500;
-    font-family: var(--jenkins-font-family);
-    background-color: var(--jenkins-btn-blue);
+    padding: 15px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: var(--font-family);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     color: #ffffff;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
+    transition: all 0.2s ease;
     text-align: center;
     margin-top: 8px;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-pf .btn-primary::after,
+.pf-c-button.pf-m-primary::after,
+input[type="submit"]::after,
+button[type="submit"]::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.login-pf .btn-primary:active::after,
+.pf-c-button.pf-m-primary:active::after,
+input[type="submit"]:active::after,
+button[type="submit"]:active::after {
+    width: 300px;
+    height: 300px;
 }
 
 .login-pf .btn-primary:hover,
 .pf-c-button.pf-m-primary:hover,
 input[type="submit"]:hover,
 button[type="submit"]:hover {
-    background-color: var(--jenkins-btn-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(11, 110, 253, 0.3);
+    background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-color) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30, 64, 175, 0.3);
 }
 
 /* Form labels */
 label {
     font-size: 14px;
-    font-weight: 500;
-    color: var(--jenkins-text);
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 8px;
     display: block;
-    font-family: var(--jenkins-font-family);
+    font-family: var(--font-family);
 }
 
 /* Footer info text */
@@ -757,22 +876,22 @@ label {
 
 #kc-info-wrapper {
     font-size: 13px;
-    font-family: var(--jenkins-font-family);
-    color: var(--jenkins-text-secondary);
+    font-family: var(--font-family);
+    color: var(--text-secondary);
     font-weight: 400;
 }
 
 #kc-info-wrapper::before {
-    content: "Please Login using your company account";
+    content: "Secure access to your organization";
     display: block;
 }
 
 /* Links styling */
 a {
-    color: var(--jenkins-btn-blue);
+    color: var(--accent-color);
     text-decoration: none;
-    font-family: var(--jenkins-font-family);
-    font-weight: 400;
+    font-family: var(--font-family);
+    font-weight: 500;
 }
 
 a:hover {
@@ -846,7 +965,7 @@ a:hover {
         text-align: center !important;
         margin-bottom: 12px !important;
         display: block !important;
-        color: var(--jenkins-text) !important;
+        color: var(--text-primary) !important;
     }
     
     h1#kc-page-title::after {
