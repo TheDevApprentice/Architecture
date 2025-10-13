@@ -136,11 +136,30 @@
     "oauth2DeviceCodeLifespan": "600",
     "parRequestUriLifespan": "60",
     "clientSessionMaxLifespan": "0",
-    "frontendUrl": "http://auth.localhost",
+    "frontendUrl": "http://${KC_HOSTNAME}",
     "darkMode": "true"
   },
   "userManagedAccessAllowed": false,
   "organizationsEnabled": false,
   "verifiableCredentialsEnabled": false,
-  "adminPermissionsEnabled": false
+  "adminPermissionsEnabled": false,
+  "users": [
+    {
+      "username": "${KC_ADMIN_USERNAME}",
+      "enabled": true,
+      "emailVerified": false,
+      "firstName": "Keycloak",
+      "lastName": "Administrator",
+      "email": "admin@example.local",
+      "realmRoles": ["admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_ADMIN_PASSWORD}",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"]
+    }
+  ]
 }
