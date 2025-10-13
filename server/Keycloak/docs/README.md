@@ -29,5 +29,6 @@ Cette documentation couvre l’utilisation de Keycloak dans ce dépôt et son in
 - Realm applicatif distinct de `master`.
 - En dev: HTTP possible; en prod: HTTPS strict via Traefik, `KC_PROXY=edge`, `KC_HOSTNAME`.
 
-
+http://auth.localhost/admin/master/console/
+http://auth.localhost/realms/master/account
 http://auth.localhost/realms/internal/account
