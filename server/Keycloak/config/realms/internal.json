@@ -7,7 +7,7 @@
   "defaultSignatureAlgorithm": "RS256",
   "sslRequired": "external",
   "registrationAllowed": false,
-  "revokeRefreshToken": false,
+  "revokeRefreshToken": true,
   "refreshTokenMaxReuse": 0,
   "accessTokenLifespan": 300,
   "accessTokenLifespanForImplicitFlow": 900,
@@ -30,18 +30,18 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
   "registrationEmailAsUsername": false,
-  "rememberMe": false,
+  "rememberMe": true,
   "verifyEmail": false,
-  "bruteForceProtected": false,
+  "bruteForceProtected": true,
   "permanentLockout": false,
-  "maxTemporaryLockouts": 0,
+  "maxTemporaryLockouts": 3,
   "bruteForceStrategy": "MULTIPLE",
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
   "waitIncrementSeconds": 60,
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
-  "failureFactor": 30,
+  "failureFactor": 5,
 
   "internationalizationEnabled": true,
   "supportedLocales": ["en", "fr"],
@@ -263,6 +263,42 @@
         "offline_access",
         "microprofile-jwt"
       ]
+    },
+    {
+      "clientId": "${KC_CLIENT_ID_JENKINS_AUTOMATION}",
+      "secret": "${KC_SECRET_JENKINS_AUTOMATION}",
+      "name": "Jenkins Automation",
+      "description": "Service account for Jenkins automation (user management via API)",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "alwaysDisplayInConsole": true,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "enabled": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "implicitFlowEnabled": false,
+      "attributes": {
+        "client.secret.creation.time": "1760109857"
+      },
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
     }
   ],
 
@@ -272,8 +308,8 @@
       "enabled": true,
       "emailVerified": true,
       "firstName": "Hugo",
-      "lastName": "User",
-      "email": "hugo@example.local",
+      "lastName": "Abric",
+      "email": "hugoeabric@outlook.com",
       "attributes": {
         "locale": "fr"
       },
@@ -288,12 +324,32 @@
       "groups": ["IT"]
     },
     {
-      "username": "fred",
+      "username": "frederic",
       "enabled": true,
-      "emailVerified": true,
+      "emailVerified": false,
       "firstName": "Frédéric",
-      "lastName": "User",
-      "email": "fred@example.local",
+      "lastName": "Abricot",
+      "email": "frederic@example.local",
+      "attributes": {
+        "locale": "en"
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["IT", "Jenkins"]
+    },
+    {
+      "username": "vincent",
+      "enabled": true,
+      "emailVerified": false,
+      "firstName": "Vincent",
+      "lastName": "Veinos",
+      "email": "vincent@example.local",
       "attributes": {
         "locale": "fr"
       },
@@ -308,23 +364,12 @@
       "groups": ["Jenkins"]
     },
     {
-      "username": "test",
+      "username": "service-account-jenkins-automation",
       "enabled": true,
-      "emailVerified": true,
-      "firstName": "Test",
-      "lastName": "User",
-      "email": "test@example.local",
-      "attributes": {
-        "locale": "en"
-      },
-      "credentials": [
-        {
-          "type": "password",
-          "value": "changeMe123!",
-          "temporary": true
-        }
-      ],
-      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"]
+      "serviceAccountClientId": "${KC_CLIENT_ID_JENKINS_AUTOMATION}",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "query-groups"]
+      }
     }
   ],
 
@@ -378,6 +423,32 @@
     ]
   },
 
+  "eventsEnabled": true,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR",
+    "UPDATE_PROFILE",
+    "UPDATE_PROFILE_ERROR",
+    "VERIFY_EMAIL",
+    "VERIFY_EMAIL_ERROR",
+    "REMOVE_TOTP",
+    "REMOVE_TOTP_ERROR",
+    "UPDATE_TOTP",
+    "UPDATE_TOTP_ERROR"
+  ],
+  "eventsExpiration": 2592000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+
+  "passwordPolicy": "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername and passwordHistory(3)",
+
   "components": {
     "org.keycloak.userprofile.UserProfileProvider": [
       {
@@ -385,7 +456,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\":[{\"name\":\"username\"},{\"name\":\"email\"},{\"name\":\"firstName\"},{\"name\":\"lastName\"}],\"groups\":[],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+            "{\"attributes\":[{\"name\":\"username\"},{\"name\":\"email\"},{\"name\":\"firstName\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"lastName\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}}],\"groups\":[],\"unmanagedAttributePolicy\":\"ENABLED\"}"
           ]
         }
       }
