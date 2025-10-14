@@ -1,0 +1,184 @@
+# Configuration ProxySQL pour Galera Cluster
+# /etc/proxysql.cnf
+
+datadir="/var/lib/proxysql"
+
+# Interface d'administration
+admin_variables=
+{
+    admin_credentials="admin:admin;radmin:radmin"
+    mysql_ifaces="0.0.0.0:6032"
+    refresh_interval=2000
+    debug=true
+}
+
+# Variables MySQL générales
+mysql_variables=
+{
+    threads=4
+    max_connections=2048
+    default_query_delay=0
+    default_query_timeout=36000000
+    have_compress=true
+    poll_timeout=2000
+    interfaces="0.0.0.0:6033"
+    default_schema="information_schema"
+    stacksize=1048576
+    server_version="8.0.25"
+    connect_timeout_server=3000
+    monitor_username="monitor"
+    monitor_password="monitor"
+    monitor_history=600000
+    monitor_connect_interval=60000
+    monitor_ping_interval=10000
+    monitor_read_only_interval=1500
+    monitor_read_only_timeout=500
+    ping_interval_server_msec=120000
+    ping_timeout_server=500
+    commands_stats=true
+    sessions_sort=true
+    connect_retries_on_failure=10
+}
+
+# Définition des serveurs Galera
+mysql_servers =
+(
+    {
+        address="mariadb_galera1"
+        port=3306
+        hostgroup=10
+        status="ONLINE"
+        weight=1000
+        compression=0
+        max_connections=1000
+        max_replication_lag=10
+        use_ssl=0
+        max_latency_ms=0
+        comment="Galera Node 1"
+    },
+    {
+        address="mariadb_galera2"
+        port=3306
+        hostgroup=10
+        status="ONLINE"
+        weight=1000
+        compression=0
+        max_connections=1000
+        max_replication_lag=10
+        use_ssl=0
+        max_latency_ms=0
+        comment="Galera Node 2"
+    },
+    {
+        address="mariadb_galera3"
+        port=3306
+        hostgroup=10
+        status="ONLINE"
+        weight=1000
+        compression=0
+        max_connections=1000
+        max_replication_lag=10
+        use_ssl=0
+        max_latency_ms=0
+        comment="Galera Node 3"
+    },
+)
+
+# Classification automatique Galera (writer/readers/offline)
+mysql_galera_hostgroups =
+(
+    {
+        writer_hostgroup=10
+        backup_writer_hostgroup=0
+        reader_hostgroup=20
+        offline_hostgroup=90
+        max_writers=1
+        writer_is_also_reader=1
+        max_transactions_behind=100
+        ping_interval=1000
+        dynamic_weight=0
+        comment="Auto classification Galera"
+    }
+)
+
+# Utilisateurs MySQL
+mysql_users =
+(
+    {
+        username = "user"
+        password = "user"
+        default_hostgroup = 10
+        use_ssl = 0
+        default_schema = ""
+        schema_locked = 0
+        transaction_persistent = 1
+        fast_forward = 0
+        backend = 1
+        frontend = 1
+        max_connections=200
+        comment = "Application User"
+    },
+    {
+        username = "monitor"
+        password = "monitor"
+        default_hostgroup = 10
+        use_ssl = 0
+        default_schema = "information_schema"
+        schema_locked = 0
+        transaction_persistent = 0
+        fast_forward = 0
+        backend = 1
+        frontend = 0
+        max_connections=5
+        comment = "Monitoring User"
+    }
+)
+
+# Règles de routage des requêtes
+mysql_query_rules =
+(
+    {
+        rule_id=1
+        active=1
+        match_pattern="^SELECT.*FOR UPDATE"
+        destination_hostgroup=10
+        apply=1
+        comment="SELECT FOR UPDATE vers hostgroup write"
+    },
+    {
+        rule_id=2
+        active=1
+        match_pattern="^SELECT"
+        destination_hostgroup=20
+        apply=1
+        comment="SELECT vers hostgroup read"
+    },
+    {
+        rule_id=3
+        active=1
+        match_pattern="^INSERT|^UPDATE|^DELETE|^REPLACE|^CREATE|^DROP|^ALTER|^TRUNCATE"
+        destination_hostgroup=10
+        apply=1
+        comment="DML/DDL vers hostgroup write"
+    },
+    {
+        rule_id=4
+        active=1
+        match_pattern="^BEGIN|^START TRANSACTION|^COMMIT|^ROLLBACK"
+        destination_hostgroup=10
+        apply=1
+        comment="Transactions vers hostgroup write"
+    }
+)
+
+# Configuration du monitoring Galera
+scheduler =
+(
+    {
+        id=1
+        active=0
+        interval_ms=5000
+        filename="/var/lib/proxysql/galera_check.sh"
+        comment="Galera health check"
+    }
+)

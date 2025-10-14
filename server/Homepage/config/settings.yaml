@@ -1,0 +1,14 @@
+---
+# Configuration settings.yaml pour meetsporty.fr dashboard
+theme: dark
+layout: grid
+background:
+  image: https://images.unsplash.com/photo-1502790671504-542ad42d5189?auto=format&fit=crop&w=2560&q=80
+  blur: sm
+  saturate: 50
+  brightness: 50
+  opacity: 50
+
+animations:
+  enable: true
+  speed: normal

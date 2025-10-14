@@ -1,0 +1,142 @@
+name: base
+
+services:
+  # Reverse proxy / gateway (Traefik)
+  traefik:
+    build:
+      context: ./server/Traefik
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=${NODE_ENV}
+    image: traefik:latest
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  # Homepage
+  # homepage:
+  #   build:
+  #     context: ./server/Homepage
+  #     dockerfile: Dockerfile
+  #     args:
+  #       - TZ=${TZ}
+  #       - NODE_ENV=${NODE_ENV}
+  #       - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+  #   image: homepage:latest
+  #   container_name: homepage
+  #   volumes:
+  #     # # DEV only :
+  #     - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
+  #     - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
+  #     - ./server/Homepage/config:/app/config            # Répertoire des configurations localisé à côté du docker-compose
+  #     # #
+  #     - homepage_data:/app/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - proxy
+  #   restart: unless-stopped
+  #   # Limites de ressources optimisées pour homepage
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'     # Limite à 1 CPU au maximum
+  #         memory: 512M    # Limite à 512MB de mémoire (suffisant pour homepage)
+  #       reservations:
+  #         cpus: '0.2'     # Garantit au minimum 20% d'un CPU
+  #         memory: 256M    # Garantit au minimum 256MB de mémoire
+  #   labels:
+  #     - "traefik.enable=true"
+  #     # Route rule -> Homepage (HTTP)
+  #     - "traefik.http.routers.homepage.rule=Host(`homepage.${HOST}`)"
+  #     - "traefik.http.routers.homepage.entrypoints=web"
+  #     - "traefik.http.routers.homepage.priority=2"
+  #     - "traefik.http.routers.homepage.service=homepage"
+  #     - "traefik.http.services.homepage.loadbalancer.server.port=${HOMEPAGE_LOADBALENCER_SERVER_PORT}"
+  #     - "traefik.docker.network=proxy"
+
+  # registry:
+  #   image: registry:2
+  #   container_name: registry
+  #   environment:
+  #     # Disable TLS in the registry, Traefik will terminate TLS
+  #     REGISTRY_HTTP_ADDR: :5000
+  #     REGISTRY_STORAGE_DELETE_ENABLED: "true"
+  #     # Optional: tune storage, you can switch to s3/minio later
+  #     REGISTRY_STORAGE: filesystem
+  #     REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+  #   volumes:
+  #     - registry_data:/var/lib/registry
+  #   restart: unless-stopped
+  #   networks:
+  #     - proxy
+  #   labels:
+  #     - "traefik.enable=true"
+  #     # Route -> Docker Registry API (HTTP). Supports both explicit and templated domains
+  #     - "traefik.http.routers.registry.rule=Host(`registry.${HOST}`)"
+  #     - "traefik.http.routers.registry.entrypoints=web"
+  #     - "traefik.http.routers.registry.priority=2"
+  #     - "traefik.http.routers.registry.service=registry"
+  #     - "traefik.http.services.registry.loadbalancer.server.port=5000"
+  #     - "traefik.docker.network=proxy"
+
+  # # Optional web UI for the registry
+  # registry-ui:
+  #   image: joxit/docker-registry-ui:latest
+  #   container_name: registry-ui
+  #   environment:
+  #     - REGISTRY_TITLE=Private Registry
+  #     - SINGLE_REGISTRY=true
+  #     - SHOW_CONTENT_DIGEST=true
+  #     - NGINX_PROXY_PASS_URL=http://registry:5000
+  #     # If your registry is exposed with TLS via Traefik, set the following URL
+  #     - REGISTRY_URL=https://registery.host
+  #   depends_on:
+  #     - registry
+  #   restart: unless-stopped
+  #   networks:
+  #     - proxy
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.registryui.rule=Host(`registry-ui.${HOST}`)"
+  #     - "traefik.http.routers.registryui.entrypoints=web"
+  #     - "traefik.http.routers.registryui.priority=2"
+  #     - "traefik.http.routers.registryui.service=registryui"
+  #     - "traefik.http.services.registryui.loadbalancer.server.port=80"
+  #     - "traefik.docker.network=proxy"
+
+volumes:
+  homepage_data:
+  traefik_data:
+  registry_data:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  dbnet:
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
+  cachenet:
+    name: cachenet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.20.0/24
+  stornet:
+    name: stornet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.30.0/24

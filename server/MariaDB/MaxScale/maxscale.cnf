@@ -1,0 +1,59 @@
+# MaxScale configuration for Binlog Server in front of MariaDB Galera
+# This provides a stable binlog endpoint for asynchronous replicas.
+
+[maxscale]
+threads=auto
+admin_enabled=true
+admin_host=0.0.0.0
+admin_port=8989
+admin_auth=false
+# optional: admin_secure_gui=false
+# optional: syslog=1
+
+# --- Backend Galera nodes ---
+[server_galera1]
+type=server
+address=mariadb_galera1
+port=3306
+protocol=MariaDBBackend
+
+[server_galera2]
+type=server
+address=mariadb_galera2
+port=3306
+protocol=MariaDBBackend
+
+[server_galera3]
+type=server
+address=mariadb_galera3
+port=3306
+protocol=MariaDBBackend
+
+# --- Galera monitor (uses the existing 'monitor' user) ---
+[Galera-Monitor]
+type=monitor
+module=galeramon
+servers=server_galera1,server_galera2,server_galera3
+user=monitor
+password=monitor
+monitor_interval=2000ms
+# enforce_primary=true  # optional: only mark a single primary for writes
+
+# --- Binlog router service ---
+[Binlog-Service]
+type=service
+select_master=true
+router=binlogrouter
+servers=server_galera1,server_galera2,server_galera3
+user=maxscale
+password=maxscale
+# Minimal, compatible options for Pinloki-based binlogrouter
+server_id=4001
+
+[Binlog-Listener]
+type=listener
+service=Binlog-Service
+authenticator=MariaDBAuth
+protocol=MariaDBProtocol
+port=3306
+

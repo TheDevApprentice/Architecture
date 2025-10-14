@@ -1,0 +1,265 @@
+name: mariaDb
+
+services:
+  # ProxySQL - Load balancer for Galera cluster
+  proxysql:
+    build:
+      context: ./server/MariaDB/ProxySQL
+      dockerfile: Dockerfile
+    image: proxysql:latest
+    container_name: proxysql
+    volumes:
+      - ./server/MariaDB/ProxySQL/proxysql.cnf:/etc/proxysql.cnf:ro
+      - proxysql_data:/var/lib/proxysql
+    ports:
+      - "127.0.0.1:6033:6033" # MySQL port for applications
+      - "127.0.0.1:6032:6032" # Admin interface
+    environment:
+      - PROXYSQL_ADMIN_USER=${PROXYSQL_ADMIN_USER}
+      - PROXYSQL_ADMIN_PASSWORD=${PROXYSQL_ADMIN_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    depends_on:
+      mariadb_galera1:
+        condition: service_healthy
+      mariadb_galera2:
+        condition: service_healthy
+      mariadb_galera3:
+        condition: service_healthy
+    networks:
+      - dbnet
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mysql", "-h127.0.0.1", "-P6032", "-uadmin", "-padmin", "-e", "SELECT 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Galera Cluster Node 1 (Bootstrap node)
+  mariadb_galera1:
+    build:
+      context: ./server/MariaDB/GaleraNode
+      dockerfile: Dockerfile
+    image: mariadb-galera:latest
+    container_name: mariadb_galera1
+    entrypoint: [ "/usr/local/bin/galera-entrypoint.sh" ]
+    environment:
+      GALERA: "1"
+      NODE_ID: "1"
+      NODE_NAME: "mariadb_galera1"
+      NODE_ADDRESS: "mariadb_galera1"
+      CLUSTER_NAME: "cluster"
+      # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
+      CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
+      BOOTSTRAP: "auto"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
+      GCACHE_SIZE: "256M"
+      GCACHE_PAGE_SIZE: "128M"
+      INNODB_BUFFER_POOL_SIZE: "256M"
+      INNODB_LOG_FILE_SIZE: "64M"
+      BINLOG_EXPIRE_DAYS: "3"
+      BINLOG_MAX_SIZE: "100M"
+      GTID_DOMAIN_ID: "1"
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_GALERA_CLUSTER: "yes"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
+    volumes:
+      - galera_node1:/var/lib/mysql
+      - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  # Galera Cluster Node 2
+  mariadb_galera2:
+    build:
+      context: ./server/MariaDB/GaleraNode
+      dockerfile: Dockerfile
+    image: mariadb-galera:latest
+    container_name: mariadb_galera2
+    entrypoint: [ "/usr/local/bin/galera-entrypoint.sh" ]
+    environment:
+      GALERA: "1"
+      NODE_ID: "2"
+      NODE_NAME: "mariadb_galera2"
+      NODE_ADDRESS: "mariadb_galera2"
+      CLUSTER_NAME: "cluster"
+      # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
+      CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
+      BOOTSTRAP: "0"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
+      GCACHE_SIZE: "256M"
+      GCACHE_PAGE_SIZE: "128M"
+      INNODB_BUFFER_POOL_SIZE: "256M"
+      INNODB_LOG_FILE_SIZE: "64M"
+      BINLOG_EXPIRE_DAYS: "3"
+      BINLOG_MAX_SIZE: "100M"
+      GTID_DOMAIN_ID: "1"
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_GALERA_CLUSTER: "yes"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
+    volumes:
+      - galera_node2:/var/lib/mysql
+      - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      mariadb_galera1:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  # Galera Cluster Node 3
+  mariadb_galera3:
+    build:
+      context: ./server/MariaDB/GaleraNode
+      dockerfile: Dockerfile
+    image: mariadb-galera:latest
+    container_name: mariadb_galera3
+    entrypoint: [ "/usr/local/bin/galera-entrypoint.sh" ]
+    environment:
+      GALERA: "1"
+      NODE_ID: "3"
+      NODE_NAME: "mariadb_galera3"
+      NODE_ADDRESS: "mariadb_galera3"
+      CLUSTER_NAME: "cluster"
+      # Pour fonctionnement normal, TOUJOURS liste complète (aucun bootstrap implicite)
+      CLUSTER_SEEDS: "mariadb_galera1,mariadb_galera2,mariadb_galera3"
+      BOOTSTRAP: "0"
+      SST_USER: "${SST_USER}"
+      SST_PASSWORD: "${SST_PASSWORD}"
+      GCACHE_SIZE: "256M"
+      GCACHE_PAGE_SIZE: "128M"
+      INNODB_BUFFER_POOL_SIZE: "256M"
+      INNODB_LOG_FILE_SIZE: "64M"
+      BINLOG_EXPIRE_DAYS: "3"
+      BINLOG_MAX_SIZE: "100M"
+      GTID_DOMAIN_ID: "1"
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_GALERA_CLUSTER: "yes"
+      MARIADB_GALERA_MARIABACKUP_USER: "${SST_USER}"
+      MARIADB_GALERA_MARIABACKUP_PASSWORD: "${SST_PASSWORD}"
+    volumes:
+      - galera_node3:/var/lib/mysql
+      - ./server/MariaDB/initdb/galera:/docker-entrypoint-initdb.d:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      mariadb_galera1:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  # MaxScale - Binlog Server for replicas (stable binlog endpoint in front of Galera)
+  maxscale:
+    image: mariadb/maxscale:latest
+    container_name: maxscale
+    volumes:
+      - ./server/MariaDB/MaxScale/maxscale.cnf:/etc/maxscale.cnf:ro
+      - maxscale_data:/var/lib/maxscale
+    depends_on:
+      mariadb_galera1:
+        condition: service_healthy
+      mariadb_galera2:
+        condition: service_healthy
+      mariadb_galera3:
+        condition: service_healthy
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "maxctrl", "list", "services" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Backup/Replica MariaDB (optionnel, pour compatibilité)
+  mariadb_backup:
+    build:
+      context: ./server/MariaDB
+      dockerfile: Dockerfile
+    image: mariadb:latest
+    container_name: mariadb_backup
+    ports:
+      - "127.0.0.1:3317:3306"
+    environment:
+      MARIADB_USER: ${MARIADB_USER_BACKUP}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD_BACKUP}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD_BACKUP}
+      # Replication configuration (via MaxScale Binlog Server)
+      PRIMARY_HOST: ${MARIADB_BACKUP_PRIMARY_HOST}
+      PRIMARY_PORT: ${MARIADB_BACKUP_PRIMARY_PORT}
+      REPL_USER: ${MARIADB_BACKUP_REPL_USER}
+      REPL_PASSWORD: ${MARIADB_BACKUP_REPL_PASSWORD}
+    volumes:
+      - mariadb_backup_data:/var/lib/mysql
+      - ./server/MariaDB/conf.d/replica.cnf:/etc/mysql/mariadb.conf.d/zz-replica.cnf:ro
+      - ./server/MariaDB/initdb/replicaMaxScale:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      proxysql:
+        condition: service_healthy
+      mariadb_galera1:
+        condition: service_healthy
+      mariadb_galera2:
+        condition: service_healthy
+      mariadb_galera3:
+        condition: service_healthy
+      maxscale:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dbnet
+      - proxy
+
+volumes:
+  proxysql_data:
+  maxscale_data:
+  galera_node1:
+  galera_node2:
+  galera_node3:
+  mariadb_backup_data:
+
+networks:
+  proxy:
+    external: true
+  dbnet:
+    external: true
+  cachenet:
+    external: true
+  stornet:
+    external: true

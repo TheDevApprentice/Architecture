@@ -1,0 +1,319 @@
+name: postgresDb
+
+services:
+  # Etcd - Distributed consensus for Patroni (like Galera's group communication)
+  etcd1:
+    image: quay.io/coreos/etcd:v3.6.5
+    container_name: etcd1
+    environment:
+      - ETCD_NAME=etcd1
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd1:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd1:2379
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_INITIAL_CLUSTER_TOKEN=patroni-cluster
+    volumes:
+      - etcd1_data:/etcd-data
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.6.5
+    container_name: etcd2
+    environment:
+      - ETCD_NAME=etcd2
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd2:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd2:2379
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_INITIAL_CLUSTER_TOKEN=patroni-cluster
+    volumes:
+      - etcd2_data:/etcd-data
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.6.5
+    container_name: etcd3
+    environment:
+      - ETCD_NAME=etcd3
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd3:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd3:2379
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_INITIAL_CLUSTER_TOKEN=patroni-cluster
+    volumes:
+      - etcd3_data:/etcd-data
+    networks:
+      - dbnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # HAProxy - Load balancer (équivalent ProxySQL pour PostgreSQL)
+  haproxy:
+    image: haproxytech/haproxy-alpine:2.8
+    container_name: haproxy
+    volumes:
+      - ./server/PostgreSQL/Patroni/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "127.0.0.1:5432:5432"   # PostgreSQL primary port
+      - "127.0.0.1:5433:5433"   # PostgreSQL replicas port (read-only)
+      - "127.0.0.1:7000:7000"   # HAProxy stats
+    depends_on:
+      patroni1:
+        condition: service_healthy
+      patroni2:
+        condition: service_healthy
+      patroni3:
+        condition: service_healthy
+    networks:
+      - dbnet
+      - proxy
+    restart: unless-stopped
+
+
+  # Patroni Node 1 (Bootstrap node - équivalent mariadb_galera1)
+  patroni1:
+    build:
+      context: ./server/PostgreSQL/Patroni
+      dockerfile: Dockerfile
+    container_name: patroni1
+    environment:
+      - PATRONI_NAME=patroni1
+      - PATRONI_SCOPE=postgres-cluster
+      - PATRONI_NAMESPACE=/service
+      - PATRONI_ETCD3_HOSTS=etcd1:2379,etcd2:2379,etcd3:2379
+      - PATRONI_POSTGRESQL_LISTEN=0.0.0.0:5432
+      - PATRONI_POSTGRESQL_CONNECT_ADDRESS=patroni1:5432
+      - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
+      - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
+      - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni1:8008
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
+      - PATRONI_SUPERUSER_USERNAME=postgres
+      - PATRONI_SUPERUSER_PASSWORD=postgres
+      - PATRONI_REPLICATION_USERNAME=replicator
+      - PATRONI_REPLICATION_PASSWORD=replpass
+      - PATRONI_admin_PASSWORD=admin
+      - PATRONI_admin_OPTIONS=createdb,createrole
+      # Bootstrap configuration
+      - PATRONI_BOOTSTRAP_DCS_TTL=30
+      - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
+      - PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT=30
+      - PATRONI_BOOTSTRAP_DCS_MAXIMUM_LAG_ON_FAILOVER=1048576
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE=true
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE_STRICT=false
+      - PATRONI_BOOTSTRAP_DCS_POSTGRESQL_USE_PG_REWIND=true
+    volumes:
+      - patroni1_data:/var/lib/postgresql/data
+      - ./server/PostgreSQL/Patroni/patroni.yml:/etc/patroni.yml:ro
+      - ./server/PostgreSQL/Patroni/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # Patroni Node 2 (équivalent mariadb_galera2)
+  patroni2:
+    build:
+      context: ./server/PostgreSQL/Patroni
+      dockerfile: Dockerfile
+    container_name: patroni2
+    environment:
+      - PATRONI_NAME=patroni2
+      - PATRONI_SCOPE=postgres-cluster
+      - PATRONI_NAMESPACE=/service
+      - PATRONI_ETCD3_HOSTS=etcd1:2379,etcd2:2379,etcd3:2379
+      - PATRONI_POSTGRESQL_LISTEN=0.0.0.0:5432
+      - PATRONI_POSTGRESQL_CONNECT_ADDRESS=patroni2:5432
+      - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
+      - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
+      - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni2:8008
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
+      - PATRONI_SUPERUSER_USERNAME=postgres
+      - PATRONI_SUPERUSER_PASSWORD=postgres
+      - PATRONI_REPLICATION_USERNAME=replicator
+      - PATRONI_REPLICATION_PASSWORD=replpass
+      - PATRONI_admin_PASSWORD=admin
+      - PATRONI_admin_OPTIONS=createdb,createrole
+      - PATRONI_BOOTSTRAP_DCS_TTL=30
+      - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
+      - PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT=30
+      - PATRONI_BOOTSTRAP_DCS_MAXIMUM_LAG_ON_FAILOVER=1048576
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE=true
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE_STRICT=false
+      - PATRONI_BOOTSTRAP_DCS_POSTGRESQL_USE_PG_REWIND=true
+    volumes:
+      - patroni2_data:/var/lib/postgresql/data
+      - ./server/PostgreSQL/Patroni/patroni.yml:/etc/patroni.yml:ro
+      - ./server/PostgreSQL/Patroni/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+      patroni1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # Patroni Node 3 (équivalent mariadb_galera3)
+  patroni3:
+    build:
+      context: ./server/PostgreSQL/Patroni
+      dockerfile: Dockerfile
+    container_name: patroni3
+    environment:
+      - PATRONI_NAME=patroni3
+      - PATRONI_SCOPE=postgres-cluster
+      - PATRONI_NAMESPACE=/service
+      - PATRONI_ETCD3_HOSTS=etcd1:2379,etcd2:2379,etcd3:2379
+      - PATRONI_POSTGRESQL_LISTEN=0.0.0.0:5432
+      - PATRONI_POSTGRESQL_CONNECT_ADDRESS=patroni3:5432
+      - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
+      - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
+      - PATRONI_RESTAPI_CONNECT_ADDRESS=patroni3:8008
+      - PATRONI_POSTGRESQL_PGPASS=/var/lib/postgresql/.pgpass
+      - PATRONI_SUPERUSER_USERNAME=postgres
+      - PATRONI_SUPERUSER_PASSWORD=postgres
+      - PATRONI_REPLICATION_USERNAME=replicator
+      - PATRONI_REPLICATION_PASSWORD=replpass
+      - PATRONI_admin_PASSWORD=admin
+      - PATRONI_admin_OPTIONS=createdb,createrole
+      - PATRONI_BOOTSTRAP_DCS_TTL=30
+      - PATRONI_BOOTSTRAP_DCS_LOOP_WAIT=10
+      - PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT=30
+      - PATRONI_BOOTSTRAP_DCS_MAXIMUM_LAG_ON_FAILOVER=1048576
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE=true
+      - PATRONI_BOOTSTRAP_DCS_SYNCHRONOUS_MODE_STRICT=false
+      - PATRONI_BOOTSTRAP_DCS_POSTGRESQL_USE_PG_REWIND=true
+    volumes:
+      - patroni3_data:/var/lib/postgresql/data
+      - ./server/PostgreSQL/Patroni/patroni.yml:/etc/patroni.yml:ro
+      - ./server/PostgreSQL/Patroni/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - dbnet
+    restart: unless-stopped
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+      patroni1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # PostgreSQL Backup/Replica (équivalent mariadb_backup)
+  postgresql_backup:
+    build:
+      context: ./server/PostgreSQL/Patroni
+      dockerfile: Dockerfile
+    container_name: postgresql_backup
+    environment:
+      - PATRONI_NAME=postgresql_backup
+      - PATRONI_SCOPE=postgres-cluster
+      - PATRONI_NAMESPACE=/service
+      - PATRONI_ETCD3_HOSTS=etcd1:2379,etcd2:2379,etcd3:2379
+      - PATRONI_POSTGRESQL_LISTEN=0.0.0.0:5432
+      - PATRONI_POSTGRESQL_CONNECT_ADDRESS=postgresql_backup:5432
+      - PATRONI_POSTGRESQL_DATA_DIR=/var/lib/postgresql/data
+      - PATRONI_RESTAPI_LISTEN=0.0.0.0:8008
+      - PATRONI_RESTAPI_CONNECT_ADDRESS=postgresql_backup:8008
+      - PATRONI_POSTGRESQL_PGPASS=/tmp/pgpass
+      - PATRONI_SUPERUSER_USERNAME=postgres
+      - PATRONI_SUPERUSER_PASSWORD=postgres
+      - PATRONI_REPLICATION_USERNAME=replicator
+      - PATRONI_REPLICATION_PASSWORD=replpass
+      - PATRONI_admin_PASSWORD=admin
+      - PATRONI_admin_OPTIONS=createdb,createrole
+      # Configuration spécifique backup (ne devient jamais primary)
+      - PATRONI_TAGS_NOFAILOVER=true
+      - PATRONI_TAGS_NOLOADBALANCE=true
+      - PATRONI_TAGS_CLONEROM=true
+    ports:
+      - "127.0.0.1:5444:5432"
+    volumes:
+      - postgresql_backup_data:/var/lib/postgresql/data
+      - ./server/PostgreSQL/Patroni/patroni.yml:/etc/patroni.yml:ro
+    networks:
+      - dbnet
+      - proxy
+    restart: unless-stopped
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      patroni1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h ${HOST} -p 5432 && curl -f http://${HOST}:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+volumes:
+  etcd1_data:
+  etcd2_data:
+  etcd3_data:
+  patroni1_data:
+  patroni2_data:
+  patroni3_data:
+  postgresql_backup_data:
+
+networks:
+  proxy:
+    external: true
+  dbnet:
+    external: true

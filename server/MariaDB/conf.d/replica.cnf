@@ -1,0 +1,29 @@
+# Replica MariaDB configuration for GTID replication
+[mysqld]
+# Unique server ID different from primary
+server-id=2
+
+# Read-only replica (application should not write here)
+read_only=ON
+
+# Relay logs
+relay_log=mysqld-relay-bin
+
+# Binary log format
+binlog_format=ROW # Value need to be the same as the primary config : if primary ROW then ROW, if mixed, mixed
+binlog_row_image=FULL
+binlog_checksum=CRC32
+
+# GTID-based replication
+gtid_strict_mode=ON
+log_slave_updates=ON
+# Same domain id as primary when using MariaDB GTID domains
+# It is fine to keep 1 for a single replication domain
+gtid_domain_id=1
+
+# Rewrite primary DB name 'chat' to 'chat_backup' on the replica
+# replicate-rewrite-db=chat->chat_backup
+
+# Networking
+bind-address=0.0.0.0
+skip-name-resolve

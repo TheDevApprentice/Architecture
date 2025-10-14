@@ -1,0 +1,32 @@
+name: messaging
+
+services:
+  # TURN/STUN server (coturn)
+  turn:
+    build:
+      context: ./server/Turn
+      dockerfile: Dockerfile
+    image: turn:latest
+    container_name: turn
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478"
+      - "49160-49200:49160-49200/udp"
+    restart: unless-stopped
+    volumes:
+      - turn_data:/var/lib/turn
+    networks:
+      - proxy
+
+volumes:
+  turn_data:
+
+networks:
+  proxy:
+    external: true
+  dbnet:
+    external: true
+  cachenet:
+    external: true
+  stornet:
+    external: true

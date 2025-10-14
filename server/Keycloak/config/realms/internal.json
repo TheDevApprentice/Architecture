@@ -1,0 +1,465 @@
+{
+  "realm": "internal",
+  "enabled": true,
+  "displayName": "Internal",
+  "displayNameHtml": "Internal <small>SSO</small>",
+  "notBefore": 0,
+  "defaultSignatureAlgorithm": "RS256",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 0,
+  "ssoSessionMaxLifespanRememberMe": 0,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "offlineSessionMaxLifespan": 5184000,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "clientOfflineSessionIdleTimeout": 0,
+  "clientOfflineSessionMaxLifespan": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "registrationEmailAsUsername": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxTemporaryLockouts": 3,
+  "bruteForceStrategy": "MULTIPLE",
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "fr"],
+  "defaultLocale": "en",
+
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+
+  "loginTheme": "internal",
+  "accountTheme": "keycloak.v3",
+  "adminTheme": "keycloak.v2",
+  "emailTheme": "keycloak",
+
+  "smtpServer": {
+    "allowutf8": "true",
+    "debug": "true",
+    "replyToDisplayName": "email name",
+    "starttls": "true",
+    "auth": "true",
+    "envelopeFrom": "",
+    "ssl": "true",
+    "password": "password",
+    "port": "25",
+    "host": "host.com",
+    "replyTo": "email@example.com",
+    "from": "email@example.com",
+    "fromDisplayName": "email name",
+    "authType": "basic",
+    "user": "email"
+  },
+
+  "attributes": {
+    "cibaBackchannelTokenDeliveryMode": "poll",
+    "cibaAuthRequestedUserHint": "login_hint",
+    "oauth2DevicePollingInterval": "5",
+    "clientOfflineSessionMaxLifespan": "0",
+    "clientSessionIdleTimeout": "0",
+    "clientOfflineSessionIdleTimeout": "0",
+    "cibaInterval": "5",
+    "realmReusableOtpCode": "false",
+    "cibaExpiresIn": "120",
+    "oauth2DeviceCodeLifespan": "600",
+    "saml.signature.algorithm": "",
+    "parRequestUriLifespan": "60",
+    "clientSessionMaxLifespan": "0",
+    "frontendUrl": "",
+    "acr.loa.map": "{}"
+  },
+
+  "requiredCredentials": ["password"],
+
+  "roles": {
+    "realm": [
+      {
+        "name": "config_service",
+        "description": "Access to configure internal services",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {}
+      },
+      {
+        "name": "view_service",
+        "description": "View-only access to internal services",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {}
+      }
+    ],
+    "client": {
+      "jenkins": [
+        {
+          "name": "admin",
+          "description": "Jenkins administrators",
+          "composite": false,
+          "clientRole": true
+        },
+        {
+          "name": "user",
+          "description": "Jenkins standard users",
+          "composite": false,
+          "clientRole": true
+        }
+      ]
+    }
+  },
+
+  "groups": [
+    {
+      "name": "IT",
+      "realmRoles": ["config_service", "view_service"],
+      "clientRoles": {
+        "account": ["view-profile", "manage-account", "view-applications"],
+        "jenkins": ["admin"]
+      }
+    },
+    {
+      "name": "Jenkins",
+      "realmRoles": ["view_service"],
+      "clientRoles": {
+        "account": ["view-profile", "manage-account", "view-applications"],
+        "jenkins": ["user"]
+      }
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "${KC_CLIENT_ID_JENKINS}",
+      "secret": "${KC_SECRET_JENKINS}",
+      "name": "Jenkins",
+      "description": "Jenkins client",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "alwaysDisplayInConsole": true,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "adminUrl": "",
+      "rootUrl": "http://${JENKINS_URL}",
+      "baseUrl": "http://${JENKINS_URL}",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "redirectUris": [
+        "http://${JENKINS_URL}/*",
+        "http://${JENKINS_URL}/securityRealm/finishLogin",
+        "http://${JENKINS_URL}/OicLogout"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "implicitFlowEnabled": false,
+      "frontchannelLogout": false,
+      "webOrigins": ["http://${JENKINS_URL}"],
+      "attributes": {
+        "realm_client": "false",
+        "client.secret.creation.time": "1760109857",
+        "login_theme": "jenkins",
+        "post.logout.redirect.uris": "http://${JENKINS_URL}",
+        "pkce.code.challenge.method": "S256",
+        "standard.token.exchange.enabled": false,
+        "oauth2.device.authorization.grant.enabled": false,
+        "oidc.ciba.grant.enabled": false,
+        "dpop.bound.access.tokens": "false",
+        "display.on.consent.screen": "false",
+        "consent.screen.text": "",
+        "backchannel.logout.url": "",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "use.jwks.url": "false",
+        "logoUri": "",
+        "policyUri": "",
+        "tosUri": "",
+        "access.token.signed.response.alg": "",
+        "access.token.header.type.rfc9068": "false",
+        "id.token.signed.response.alg": "",
+        "id.token.encrypted.response.alg": "",
+        "id.token.encrypted.response.enc": "",
+        "id.token.as.detached.signature": "false",
+        "user.info.response.signature.alg": "",
+        "user.info.encrypted.response.alg": "",
+        "user.info.encrypted.response.enc": "",
+        "request.object.signature.alg": "any",
+        "request.object.encryption.alg": "any",
+        "request.object.encryption.enc": "any",
+        "request.object.required": "not required",
+        "authorization.signed.response.alg": "",
+        "authorization.encrypted.response.alg": "",
+        "authorization.encrypted.response.enc": "",
+        "exclude.session.state.from.auth.response": "",
+        "exclude.issuer.from.auth.response": "",
+        "use.refresh.tokens": "true",
+        "client_credentials.use_refresh_token": "false",
+        "token.response.type.bearer.lower-case": "false",
+        "standard.token.exchange.enableRefreshRequestedTokenType": "",
+        "access.token.lifespan": "",
+        "client.session.idle.timeout": "",
+        "client.session.max.lifespan": "",
+        "client.offline.session.idle.timeout": "",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "require.pushed.authorization.requests": "false",
+        "client.use.lightweight.access.token.enabled": "false",
+        "client.introspection.response.allow.jwt.claim.enabled": "false",
+        "minimum.acr.value": "",
+        "acr.loa.map": "{}"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "organization",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "${KC_CLIENT_ID_JENKINS_AUTOMATION}",
+      "secret": "${KC_SECRET_JENKINS_AUTOMATION}",
+      "name": "Jenkins Automation",
+      "description": "Service account for Jenkins automation (user management via API)",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "alwaysDisplayInConsole": true,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "enabled": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "implicitFlowEnabled": false,
+      "attributes": {
+        "client.secret.creation.time": "1760109857"
+      },
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "hugo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Hugo",
+      "lastName": "Abric",
+      "email": "hugoeabric@outlook.com",
+      "attributes": {
+        "locale": "fr"
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["IT"]
+    },
+    {
+      "username": "frederic",
+      "enabled": true,
+      "emailVerified": false,
+      "firstName": "Frédéric",
+      "lastName": "Abricot",
+      "email": "frederic@example.local",
+      "attributes": {
+        "locale": "en"
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["IT", "Jenkins"]
+    },
+    {
+      "username": "vincent",
+      "enabled": true,
+      "emailVerified": false,
+      "firstName": "Vincent",
+      "lastName": "Veinos",
+      "email": "vincent@example.local",
+      "attributes": {
+        "locale": "fr"
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMe123!",
+          "temporary": true
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "UPDATE_PROFILE"],
+      "groups": ["Jenkins"]
+    },
+    {
+      "username": "service-account-jenkins-automation",
+      "enabled": true,
+      "serviceAccountClientId": "${KC_CLIENT_ID_JENKINS_AUTOMATION}",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "query-groups"]
+      }
+    }
+  ],
+
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpPolicyCodeReusable": false,
+  "otpSupportedApplications": [
+    "totpAppFreeOTPName",
+    "totpAppGoogleName",
+    "totpAppMicrosoftAuthenticatorName"
+  ],
+  "localizationTexts": {},
+  "webAuthnPolicyRpEntityName": "keycloak",
+  "webAuthnPolicySignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyRpId": "",
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "not specified",
+  "webAuthnPolicyCreateTimeout": 0,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+  "webAuthnPolicyAcceptableAaguids": [],
+  "webAuthnPolicyExtraOrigins": [],
+  "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
+  "webAuthnPolicyPasswordlessSignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyPasswordlessRpId": "",
+  "webAuthnPolicyPasswordlessAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyPasswordlessRequireResidentKey": "Yes",
+  "webAuthnPolicyPasswordlessUserVerificationRequirement": "required",
+  "webAuthnPolicyPasswordlessCreateTimeout": 0,
+  "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
+  "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+  "webAuthnPolicyPasswordlessExtraOrigins": [],
+  "scopeMappings": [
+    {
+      "clientScope": "offline_access",
+      "roles": ["offline_access"]
+    }
+  ],
+  "clientScopeMappings": {
+    "account": [
+      {
+        "client": "account-console",
+        "roles": ["manage-account", "view-groups"]
+      }
+    ]
+  },
+
+  "eventsEnabled": true,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR",
+    "UPDATE_PROFILE",
+    "UPDATE_PROFILE_ERROR",
+    "VERIFY_EMAIL",
+    "VERIFY_EMAIL_ERROR",
+    "REMOVE_TOTP",
+    "REMOVE_TOTP_ERROR",
+    "UPDATE_TOTP",
+    "UPDATE_TOTP_ERROR"
+  ],
+  "eventsExpiration": 2592000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+
+  "passwordPolicy": "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername and passwordHistory(3)",
+
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\"},{\"name\":\"email\"},{\"name\":\"firstName\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"lastName\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}}],\"groups\":[],\"unmanagedAttributePolicy\":\"ENABLED\"}"
+          ]
+        }
+      }
+    ]
+  }
+}

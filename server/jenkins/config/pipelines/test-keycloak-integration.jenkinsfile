@@ -1,0 +1,367 @@
+/**
+ * Keycloak Integration Test Pipeline
+ * 
+ * Tests the connection and basic operations with Keycloak API
+ * Run this pipeline to verify the setup is correct
+ */
+
+// Load Keycloak library functions directly
+def keycloakAuth
+def keycloakUser
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REALM',
+            choices: ['internal'],
+            description: 'Keycloak realm to test'
+        )
+    }
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        TEST_USERNAME = "test-jenkins-${BUILD_NUMBER}"
+        TEST_EMAIL = "test-jenkins-${BUILD_NUMBER}@example.local"
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    // Load library scripts from filesystem
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('🔍 Test 1: Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Test 2: Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Testing service account authentication..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            clientId: env.KC_CLIENT_ID,
+                            clientSecret: env.KC_CLIENT_SECRET,
+                            realm: params.REALM
+                        )
+                        
+                        if (env.ACCESS_TOKEN) {
+                            echo "✅ Successfully obtained access token"
+                            //  echo "DEV : Token length: ${env.ACCESS_TOKEN.length()} characters"
+                            
+                            // Validate token
+                            def isValid = keycloakAuth.validateToken(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            if (isValid) {
+                                echo "✅ Token is valid"
+                            } else {
+                                error("❌ Token validation failed")
+                            }
+                        } else {
+                            error("❌ No access token received")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Authentication failed: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📋 Test 3: List Users') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 3: Testing user listing..."
+                    echo "=" * 60
+                    
+                    try {
+                        def users = keycloakUser.listUsers(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            max: 10
+                        )
+                        
+                        echo "✅ Successfully retrieved users"
+                        // echo "DEV :   Total users: ${users.size()}"
+                        // echo "DEV :   - ${users}"
+                        if (users.size() > 0) {
+                            echo "\n   Sample users:"
+                            def count = 0
+                            users.each { user ->
+                                if (count < 5) {
+                                    echo "DEV : - ${user.username} (${user.email ?: 'no email'})"
+                                    count++
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to list users: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('👤 Test 4: Create Test User') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 4: Testing user creation..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_USER_ID = keycloakUser.createUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            email: env.TEST_EMAIL,
+                            firstName: "Test",
+                            lastName: "User ${BUILD_NUMBER}",
+                            enabled: true,
+                            emailVerified: false,
+                            password: "changeMe123!",
+                            temporaryPassword: true
+                        )
+                        
+                        echo "✅ User created successfully"
+                        echo "   User ID: ${env.TEST_USER_ID}"
+                        echo "   Username: ${env.TEST_USERNAME}"
+                        echo "   Email: ${env.TEST_EMAIL}"
+
+                        try {
+                            echo " proof of user creation"
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                max: 10
+                            )
+                            
+                            echo "✅ Successfully retrieved users"
+                            echo "   Total users: ${users.size()}"
+                            // echo "- ${users}"
+                            if (users.size() > 0) {
+                                echo "\n   Sample users:"
+                                def count = 0
+                                users.each { user ->
+                                    if (count < 5) {
+                                        echo "  - ${user.username} (${user.email ?: 'no email'})"
+                                        count++
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            error("❌ Failed to list users: ${e.message}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to create user: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('✏️  Test 5: Update Test User') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 5: Testing user update..."
+                    echo "=" * 60
+                    
+                    try {
+                        keycloakUser.updateUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            firstName: "Updated",
+                            lastName: "Test User",
+                            emailVerified: true
+                        )
+                        
+                        echo "✅ User updated successfully"
+                    } catch (Exception e) {
+                        error("❌ Failed to update user: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔑 Test 6: Reset Password') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 6: Testing password reset..."
+                    echo "=" * 60
+                    
+                    try {
+                        def newPassword = keycloakUser.generatePassword(16)
+                        
+                        keycloakUser.resetPassword(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            password: newPassword,
+                            temporary: false
+                        )
+                        
+                        echo "✅ Password reset successfully"
+                        echo "   New password: ${newPassword}"
+                    } catch (Exception e) {
+                        error("❌ Failed to reset password: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('👥 Test 7: Add to Group') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 7: Testing group assignment..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Try to add to Jenkins group (should exist in internal realm)
+                        keycloakUser.addUserToGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            groupName: 'Jenkins'
+                        )
+                        
+                        echo "✅ User added to group successfully"
+                    } catch (Exception e) {
+                        echo "⚠️  Group assignment failed (group may not exist): ${e.message}"
+                        echo "   This is OK for testing purposes"
+                    }
+                }
+            }
+        }
+        
+        stage('🗑️  Test 8: Delete Test User') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 8: Testing user deletion (cleanup)..."
+                    echo "=" * 60
+                    
+                    try {
+                        keycloakUser.deleteUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME
+                        )
+                        
+                        echo "✅ Test user deleted successfully"
+                    } catch (Exception e) {
+                        error("❌ Failed to delete test user: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📊 Test Summary') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "🎉 ALL TESTS PASSED!"
+                    echo "=" * 60
+                    echo ""
+                    echo "✅ Keycloak connectivity"
+                    echo "✅ Service account authentication"
+                    echo "✅ Token validation"
+                    echo "✅ List users"
+                    echo "✅ Create user"
+                    echo "✅ Update user"
+                    echo "✅ Reset password"
+                    echo "✅ Add to group (if group exists)"
+                    echo "✅ Delete user"
+                    echo ""
+                    echo "The Keycloak integration is working correctly!"
+                    echo "You can now use the automation pipelines safely."
+                    echo "=" * 60
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "✅ Integration test completed successfully!"
+        }
+        failure {
+            echo "❌ Integration test failed!"
+            echo "Please check the logs above for details."
+        }
+        always {
+            script {
+                // Clean up sensitive data
+                env.ACCESS_TOKEN = null
+                
+                // Try to clean up test user if it still exists
+                try {
+                    if (env.TEST_USER_ID) {
+                        echo "🧹 Cleaning up test user (if exists)..."
+                        keycloakUser.deleteUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: keycloakAuth.getServiceAccountToken(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                clientId: env.KC_CLIENT_ID,
+                                clientSecret: env.KC_CLIENT_SECRET,
+                                realm: params.REALM
+                            ),
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME
+                        )
+                    }
+                } catch (Exception e) {
+                    echo "Note: Test user cleanup skipped (may already be deleted)"
+                }
+            }
+        }
+    }
+}

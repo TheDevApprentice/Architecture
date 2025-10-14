@@ -1,0 +1,66 @@
+jenkins:
+  systemMessage: "Configured by JCasC dev - Welcome to Jenkins"
+  securityRealm:
+    oic:
+      # Credentials
+      clientId: "${OIDC_CLIENT_ID}"
+      clientSecret: "${OIDC_CLIENT_SECRET}"
+      # claims (JMES paths in ID token/userinfo)
+      userIdStrategy: "caseInsensitive"
+      userNameField: "preferred_username"
+      groupsFieldName: "groups"
+      groupIdStrategy: "caseInsensitive"
+      fullNameFieldName: "name"
+      emailFieldName: "email"
+      # advanced configuration
+      logoutFromOpenidProvider: true
+      rootURLFromRequest: true
+      sendScopesInTokenRequest: true
+      postLogoutRedirectUrl: "http://${JENKINS_URL}"
+      # Security (Keycloak over HTTP in dev)
+      disableSslVerification: true
+      # Properties
+      properties:
+        - "pkce"
+      serverConfiguration:
+        wellKnown:
+          wellKnownOpenIDConfigurationUrl: "http://${KC_URL}/realms/${KC_REALM}/.well-known/openid-configuration"
+          scopesOverride: "openid profile email"
+  authorizationStrategy:
+    globalMatrix:
+      entries:
+        - group:
+            name: IT
+            permissions:
+              - Overall/Administer
+        - group:
+            name: Jenkins
+            permissions:
+              - Overall/Read
+              # Agents
+              - Agent/Connect
+              - Agent/Create
+              - Agent/Configure
+              - Agent/Disconnect
+              - Agent/Delete
+              # Jobs
+              - Job/Discover
+              - Job/Read
+              - Job/Create
+              - Job/Configure
+              - Job/Build
+              - Job/Move
+              - Job/Delete
+              # Runs
+              - Run/Delete
+              - Run/Replay
+              # Views
+              - View/Read
+              - View/Create
+              - View/Configure
+              - View/Delete
+
+unclassified:
+  location:
+    adminAddress: "l'adresse n'est pas encore configurée <nobody@nowhere>"
+    url: "http://${JENKINS_URL}"

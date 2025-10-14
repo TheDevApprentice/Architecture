@@ -1,0 +1,975 @@
+:root {
+    --background-color: #ffffff;
+    --jenkins-blue: #335061;
+    --jenkins-btn-blue: #0b6efd;
+    --jenkins-btn-hover: #0a5edb;
+    --jenkins-text: #333333;
+    --jenkins-border: #d1d5db;
+    --jenkins-font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --jenkins-text-secondary: #6b7280;
+}
+
+.login-pf body {
+    background: var(--background-color);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.alert-error {
+    background-color: var(--background-color);
+    border-color: #cc0000;
+    color: #333333;
+}
+
+/* Language selector styles */
+#kc-locale {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+}
+
+#kc-current-locale-link {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--jenkins-border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-family: var(--jenkins-font-family);
+    font-weight: 400;
+    color: var(--jenkins-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-width: 100px;
+    text-align: left;
+}
+
+#kc-current-locale-link:hover {
+    border-color: var(--jenkins-btn-blue);
+    box-shadow: 0 2px 6px rgba(11, 110, 253, 0.15);
+}
+
+#kc-current-locale-link:focus {
+    outline: none;
+    border-color: var(--jenkins-btn-blue);
+    box-shadow: 0 0 0 3px rgba(11, 110, 253, 0.1);
+}
+
+/* Add dropdown arrow */
+#kc-current-locale-link::after {
+    content: "▼";
+    font-size: 10px;
+    margin-left: 8px;
+    opacity: 0.6;
+}
+
+#kc-locale ul {
+    display: none;
+    position: absolute;
+    background: #ffffff;
+    list-style: none;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 100px;
+    padding: 4px 0;
+    margin: 0;
+    border: 1px solid var(--jenkins-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+}
+
+#kc-locale:hover ul,
+#kc-locale-dropdown:hover ul {
+    display: block;
+}
+
+#kc-locale ul li {
+    margin: 0;
+    padding: 0;
+}
+
+#kc-locale ul li a {
+    display: block;
+    padding: 10px 16px;
+    color: var(--jenkins-text) !important;
+    text-decoration: none;
+    font-size: 14px;
+    font-family: var(--jenkins-font-family);
+    font-weight: 400;
+    transition: background-color 0.15s ease;
+}
+
+#kc-locale ul li a:hover {
+    background-color: #f3f4f6;
+    color: var(--jenkins-btn-blue) !important;
+}
+
+#kc-locale-dropdown a {
+    color: var(--jenkins-text);
+    background: transparent;
+    padding: 0;
+    font-weight: 400;
+}
+
+#kc-locale-dropdown a:hover {
+    text-decoration: none;
+}
+
+/* Old locale link styles - replaced by new modern design above */
+
+/* Container padding removed - now handled by jenkins-form-panel */
+
+.login-pf a:hover {
+    color: #0099d3;
+}
+
+.login-pf .btn-primary {
+    background-color: var(--jenkins-btn-blue);
+    border: solid 1px var(--jenkins-btn-blue);
+    background-image: none;
+    background-repeat: none;
+}
+
+#kc-logo {
+    width: 100%;
+}
+
+#kc-logo-wrapper {
+    background-image: url(../img/jenkins.svg);
+    background-repeat: no-repeat;
+    height: 130px;
+    margin: 62px auto 0;
+}
+
+div.kc-logo-text {
+    background-image: url(../img/jenkins.svg);
+    background-repeat: no-repeat;
+    height: 130px;
+    width: 100px;
+    margin: 0 auto;
+}
+
+div.kc-logo-text span {
+    display: none;
+}
+
+#kc-header {
+    color: #4A4A4A;
+    overflow: visible;
+    white-space: nowrap;
+
+    margin: 0;
+}
+
+#kc-header-wrapper {
+    font-size: 29px;
+    line-height: 1.2em;
+    padding: 62px 10px 0;
+    white-space: normal;
+}
+
+#kc-content {
+    width: 100%;
+}
+
+#kc-attempted-username{
+    font-size: 20px;
+    font-family:inherit;
+    font-weight: normal;
+    padding-right:10px;
+}
+
+#kc-username{
+    text-align: center;
+}
+
+#kc-webauthn-settings-form{
+    padding-top:8px;
+}
+
+/* #kc-content-wrapper {
+    overflow-y: hidden;
+} */
+
+#kc-info {
+    padding-bottom: 200px;
+    margin-bottom: -200px;
+}
+
+#kc-info-wrapper {
+    font-size: 13px;
+}
+
+#kc-form-options span {
+    display: block;
+}
+
+#kc-form-options .checkbox {
+    margin-top: 0;
+    color: #72767b;
+}
+
+#kc-terms-text {
+    margin-bottom: 20px;
+}
+
+#kc-registration {
+    margin-bottom: 15px;
+}
+
+/* TOTP */
+
+.subtitle {
+    text-align: right;
+    margin-top: 30px;
+    color: #909090;
+}
+
+.required {
+    color: #CB2915;
+}
+
+ol#kc-totp-settings {
+    margin: 0;
+    padding-left: 20px;
+}
+
+ul#kc-totp-supported-apps {
+  margin-bottom: 10px;
+}
+
+#kc-totp-secret-qr-code {
+    max-width:150px;
+    max-height:150px;
+}
+
+#kc-totp-secret-key {
+    background-color: #fff;
+    color: #333333;
+    font-size: 16px;
+    padding: 10px 0;
+}
+
+/* OAuth */
+
+#kc-oauth h3 {
+    margin-top: 0;
+}
+
+#kc-oauth ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#kc-oauth ul li {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+    padding: 10px 0;
+}
+
+#kc-oauth ul li:first-of-type {
+    border-top: 0;
+}
+
+#kc-oauth .kc-role {
+    display: inline-block;
+    width: 50%;
+}
+
+/* Code */
+#kc-code textarea {
+    width: 100%;
+    height: 8em;
+}
+
+/* Social */
+
+#kc-social-providers ul {
+    padding: 0;
+}
+
+#kc-social-providers li {
+    display: block;
+}
+
+#kc-social-providers li:first-of-type {
+    margin-top: 0;
+}
+
+.kc-login-tooltip{
+    position:relative;
+    display: inline-block;
+}
+
+.kc-login-tooltip .kc-tooltip-text{
+    top:-3px;
+    left:160%;
+    background-color: black;
+    visibility: hidden;
+    color: #fff;
+
+    min-width:130px;
+    text-align: center;
+    border-radius: 2px;
+    box-shadow:0 1px 8px rgba(0,0,0,0.6);
+    padding: 5px;
+
+    position: absolute;
+    opacity:0;
+    transition:opacity 0.5s;
+}
+
+/* Show tooltip */
+.kc-login-tooltip:hover .kc-tooltip-text {
+    visibility: visible;
+    opacity:0.7;
+}
+
+/* Arrow for tooltip */
+.kc-login-tooltip .kc-tooltip-text::after {
+    content: " ";
+    position: absolute;
+    top: 15px;
+    right: 100%;
+    margin-top: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent black transparent transparent;
+}
+
+.zocial,
+a.zocial  {
+    width: 100%;
+    font-weight: normal;
+    font-size: 14px;
+    text-shadow: none;
+    border: 0;
+    background: #f5f5f5;
+    color: #72767b;
+    border-radius: 0;
+    white-space: normal;
+}
+.zocial:before {
+  border-right: 0;
+  margin-right: 0;
+}
+.zocial span:before {
+    padding: 7px 10px;
+    font-size: 14px;
+}
+.zocial:hover {
+    background: #ededed !important;
+}
+
+.zocial.facebook,
+.zocial.github,
+.zocial.google,
+.zocial.microsoft,
+.zocial.stackoverflow,
+.zocial.linkedin,
+.zocial.twitter {
+    background-image: none;
+    border: 0;
+
+    box-shadow: none;
+    text-shadow: none;
+}
+
+/* Copy of zocial windows classes to be used for microsoft's social provider button */
+.zocial.microsoft:before{ content: "\f15d"; }
+.zocial.stackoverflow:before{ color: inherit; }
+
+
+@media (min-width: 768px) {
+    #kc-container-wrapper {
+        position: absolute;
+        width: 100%;
+    }
+
+    /* Old container rule removed - using jenkins-form-panel now */
+}
+
+@media (max-width: 767px) {
+
+    .login-pf body {
+      background: white;
+    }
+
+    #kc-header {
+        padding-left: 15px;
+        padding-right: 15px;
+        float: none;
+        text-align: left;
+    }
+
+    #kc-header-wrapper {
+      font-size: 16px;
+      font-weight: bold;
+      padding: 20px 60px 0 0;
+      color: #72767b;
+      letter-spacing: 0;
+    }
+
+    div.kc-logo-text {
+        margin: 0;
+        width: 150px;
+        height: 32px;
+        background-size: 100%;
+    }
+
+    #kc-form {
+        float: none;
+    }
+
+    #kc-info-wrapper {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 15px;
+        padding-top: 15px;
+        padding-left: 0px;
+        padding-right: 15px;
+    }
+
+    #kc-social-providers li {
+        display: block;
+        margin-right: 5px;
+    }
+
+    /* Old container rule removed */
+
+    #kc-logo-wrapper {
+        background-size: 100px 21px;
+        height: 21px;
+        width: 100px;
+        margin: 20px 0 0 20px;
+    }
+
+}
+
+@media (min-height: 646px) {
+    #kc-container-wrapper {
+        bottom: 12%;
+    }
+}
+
+@media (max-height: 645px) {
+    #kc-container-wrapper {
+        padding-top: 50px;
+        top: 20%;
+    }
+}
+
+.card-pf form.form-actions .btn {
+    float: right;
+    margin-left: 10px;
+}
+
+#kc-form-buttons {
+  margin-top: 40px;
+}
+
+.login-pf-page .login-pf-brand {
+  margin-top: 20px;
+  max-width: 360px;
+  width: 40%;
+}
+
+.card-pf {
+  background: #fff;
+  margin: 0 auto;
+  padding: 0 20px;
+  max-width: 500px;
+  border-top: 0;
+  box-shadow: 0 0 0;
+}
+
+/*tablet*/
+@media (max-width: 840px) {
+    .login-pf-page .card-pf{
+      max-width: none;
+      margin-left: 20px;
+      margin-right: 20px;
+      padding: 20px 20px 30px 20px;
+    }
+}
+@media (max-width: 767px) {
+    .login-pf-page .card-pf{
+      max-width: none;
+      margin-left: 0;
+      margin-right: 0;
+      padding-top: 0;
+    }
+    .card-pf.login-pf-accounts{
+      max-width: none;
+    }
+}
+
+.login-pf-page .login-pf-signup {
+  font-size: 15px;
+  color: #72767b;
+}
+#kc-content-wrapper .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@media (min-width: 768px) {
+  .login-pf-page .login-pf-social-section:first-of-type {
+    padding-right: 39px;
+    border-right: 1px solid #d1d1d1;
+    margin-right: -1px;
+  }
+  .login-pf-page .login-pf-social-section:last-of-type {
+    padding-left: 40px;
+  }
+  .login-pf-page .login-pf-social-section .login-pf-social-link:last-of-type {
+    margin-bottom: 0;
+  }
+}
+
+.login-pf-page .login-pf-social-link {
+  margin-bottom: 25px;
+}
+.login-pf-page .login-pf-social-link a {
+  padding: 2px 0;
+}
+
+.login-pf-page.login-pf-page-accounts {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-pf-page .btn-primary {
+    margin-top: 0;
+}
+
+.login-pf-page .list-view-pf .list-group-item {
+    border-bottom: 1px solid #ededed;
+}
+
+.login-pf-page .list-view-pf-description {
+    width: 100%;
+}
+
+.login-pf-page .card-pf{
+  margin-bottom: 10px;
+}
+
+#kc-form-login div.form-group:last-of-type,
+#kc-register-form div.form-group:last-of-type,
+#kc-update-profile-form div.form-group:last-of-type {
+    margin-bottom: 0px;
+}
+
+#kc-back {
+    margin-top: 5px;
+}
+
+form#kc-select-back-form div.login-pf-social-section {
+    padding-left: 0px;
+    border-left: 0px;
+}
+
+/* ========================================= */
+/* Jenkins Two-Column Login Layout          */
+/* ========================================= */
+
+/* Override body to ensure full viewport */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/* Main wrapper: 2-column flex container */
+.jenkins-login-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Left branding panel (40%) */
+.jenkins-branding-panel {
+    width: 40%;
+    background: linear-gradient(135deg, 
+        rgba(72, 120, 150, 1) 0%,
+        rgba(150, 120, 180, 0.8) 30%,
+        rgba(230, 150, 160, 0.8) 60%,
+        rgba(250, 200, 180, 1) 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Jenkins butler logo in left panel */
+.jenkins-logo {
+    width: 200px;
+    height: 200px;
+    background: url("../img/jenkins.svg") center center / contain no-repeat;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.15));
+}
+
+/* Right form panel (60%) */
+.jenkins-form-panel {
+    width: 60%;
+    background: var(--background-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+/* Adjust inner login wrapper */
+.jenkins-form-panel .login-pf {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+/* Override content positioning */
+#kc-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Hide default header wrapper (we'll style the title directly) */
+#kc-header-wrapper {
+    display: none !important;
+}
+
+/* Show and style the page title */
+h1#kc-page-title {
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--jenkins-text);
+    margin-bottom: 12px;
+    text-align: left;
+    font-family: var(--jenkins-font-family);
+    letter-spacing: -0.02em;
+}
+
+/* Add subtitle below title */
+h1#kc-page-title::after {
+    content: "Welcome to Jenkins login";
+    display: block;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--jenkins-text-secondary);
+    margin-top: 10px;
+    letter-spacing: normal;
+}
+
+/* Card styling for form */
+.login-pf-page .card-pf {
+    background: var(--background-color);
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    max-width: 480px;
+    margin: 0;
+}
+
+/* Form inputs */
+.pf-c-form-control,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: var(--jenkins-font-family);
+    border: 1px solid var(--jenkins-border);
+    border-radius: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #f9fafb;
+    line-height: 1.5;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
+.pf-c-form-control:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    border-color: var(--jenkins-btn-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(11, 110, 253, 0.1);
+    background: #ffffff;
+}
+
+/* Primary button (Sign in) */
+.login-pf .btn-primary,
+.pf-c-button.pf-m-primary,
+input[type="submit"],
+button[type="submit"] {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: var(--jenkins-font-family);
+    background-color: var(--jenkins-btn-blue);
+    border: none;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    text-align: center;
+    margin-top: 8px;
+    letter-spacing: 0.01em;
+}
+
+.login-pf .btn-primary:hover,
+.pf-c-button.pf-m-primary:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover {
+    background-color: var(--jenkins-btn-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(11, 110, 253, 0.3);
+}
+
+/* Form labels */
+label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--jenkins-text);
+    margin-bottom: 8px;
+    display: block;
+    font-family: var(--jenkins-font-family);
+}
+
+/* Footer info text */
+#kc-info {
+    margin-top: 24px;
+    text-align: center;
+}
+
+#kc-info-wrapper {
+    font-size: 13px;
+    font-family: var(--jenkins-font-family);
+    color: var(--jenkins-text-secondary);
+    font-weight: 400;
+}
+
+#kc-info-wrapper::before {
+    content: "Please Login using your company account";
+    display: block;
+}
+
+/* Links styling */
+a {
+    color: var(--jenkins-btn-blue);
+    text-decoration: none;
+    font-family: var(--jenkins-font-family);
+    font-weight: 400;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Hide "Forgot Password?" and "Remember Me" to match Jenkins design */
+#kc-form-options {
+    display: none !important;
+}
+
+.kcFormOptionsWrapperClass,
+#kc-form-wrapper .kcFormOptionsWrapperClass {
+    display: none !important;
+}
+
+/* Form button spacing */
+#kc-form-buttons {
+    margin-top: 24px;
+}
+
+/* Responsive: collapse to single column on smaller screens */
+@media (max-width: 960px) {
+    .jenkins-login-wrapper {
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    
+    .jenkins-branding-panel {
+        display: none;
+    }
+    
+    .jenkins-form-panel {
+        width: 100%;
+        padding: 40px 24px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .jenkins-form-panel .login-pf {
+        width: 100%;
+        max-width: 480px;
+    }
+    
+    /* Show logo on mobile */
+    #kc-logo-wrapper {
+        display: block !important;
+        background-size: 100px auto !important;
+        height: 100px !important;
+        width: 100px !important;
+        margin: 0 auto 30px !important;
+    }
+    
+    /* Hide realm display header (#kc-header) but NOT the form header */
+    #kc-header,
+    #kc-header-wrapper {
+        display: none !important;
+    }
+    
+    /* Show form header on mobile */
+    header.pf-c-login__header,
+    .pf-c-card__header {
+        display: block !important;
+    }
+    
+    /* Adjust title on mobile */
+    h1#kc-page-title {
+        font-size: 26px !important;
+        text-align: center !important;
+        margin-bottom: 12px !important;
+        display: block !important;
+        color: var(--jenkins-text) !important;
+    }
+    
+    h1#kc-page-title::after {
+        text-align: center !important;
+        font-size: 14px !important;
+        margin-top: 8px !important;
+        display: block !important;
+    }
+    
+    /* Form spacing on mobile */
+    .login-pf-page .card-pf {
+        padding: 0 16px;
+    }
+    
+    /* Header section on mobile */
+    header {
+        display: block !important;
+        margin-bottom: 30px !important;
+    }
+    
+    /* Force display of content wrapper on mobile */
+    .pf-c-login__main,
+    .pf-c-card,
+    .col-md-10 {
+        display: block !important;
+    }
+    
+    /* Locale selector on mobile - top right corner like desktop */
+    #kc-locale {
+        position: absolute !important;
+        top: 20px !important;
+        right: 20px !important;
+        margin-bottom: 0 !important;
+        width: auto !important;
+    }
+    
+    #kc-locale-wrapper {
+        position: relative !important;
+    }
+    
+    #kc-locale-dropdown {
+        position: relative !important;
+    }
+    
+    #kc-current-locale-link {
+        min-width: 100px;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    #kc-locale ul {
+        left: auto !important;
+        right: 0 !important;
+        transform: none !important;
+        top: calc(100% + 4px) !important;
+        position: absolute !important;
+        min-width: 120px !important;
+    }
+    
+    /* Input spacing */
+    .pf-c-form-control,
+    input[type="text"],
+    input[type="password"],
+    input[type="email"] {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    label {
+        font-size: 14px;
+    }
+    
+    /* Button on mobile */
+    .login-pf .btn-primary,
+    input[type="submit"],
+    button[type="submit"] {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    /* Footer text */
+    #kc-info-wrapper {
+        font-size: 12px;
+    }
+    
+    /* Form group spacing on mobile */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    /* Adjust link spacing */
+    #kc-form-options {
+        margin-bottom: 16px;
+    }
+    
+    /* Form button spacing on mobile */
+    #kc-form-buttons {
+        margin-top: 20px;
+    }
+}
+
+/* Very small screens (phones in portrait) */
+@media (max-width: 480px) {
+    .jenkins-form-panel {
+        padding: 24px 20px;
+    }
+    
+    .login-pf-page .card-pf {
+        padding: 0 12px;
+    }
+    
+    /* Smaller logo on very small screens */
+    #kc-logo-wrapper {
+        background-size: 80px auto !important;
+        height: 80px !important;
+        width: 80px !important;
+        margin: 0 auto 24px !important;
+    }
+    
+    h1#kc-page-title {
+        font-size: 24px !important;
+    }
+    
+    h1#kc-page-title::after {
+        font-size: 13px !important;
+    }
+}
