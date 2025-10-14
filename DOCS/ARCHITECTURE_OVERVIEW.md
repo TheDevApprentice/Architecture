@@ -4,9 +4,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Traefik (Reverse Proxy)                  │
-│                    http://auth.localhost                         │
-│                    http://jenkins.localhost                      │
+│                    Traefik (Reverse Proxy)                      │
+│                    http://auth.localhost                        │
+│                    http://jenkins.localhost                     │
 └────────────┬────────────────────────────────┬───────────────────┘
              │                                │
              ▼                                ▼
