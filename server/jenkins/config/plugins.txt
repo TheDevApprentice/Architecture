@@ -1,0 +1,55 @@
+# Core pipeline and utilities
+workflow-aggregator
+pipeline-utility-steps
+durable-task
+pipeline-stage-view
+# pipeline-graph-view # alternative UI (optional)
+
+# SCM and GitHub
+git
+github
+github-branch-source
+
+# Docker
+docker-workflow
+
+# SSH and remote execution
+ssh-agent
+sshd
+publish-over-ssh
+# ssh-steps # alternative to publish-over-ssh (optional)
+
+# Webhooks / triggers
+generic-webhook-trigger
+
+# Security and credentials
+credentials
+credentials-binding
+plain-credentials
+matrix-auth
+# role-strategy # use instead of matrix-auth if you need role-based auth (optional)
+
+# Quality and tests
+junit
+warnings-ng
+
+# Notifications
+mailer
+email-ext
+# slack # optional if you use Slack
+
+# UX / logs / stability
+timestamper
+ansicolor
+build-timeout
+throttle-concurrents
+# workspace-cleanup
+
+# As Code
+configuration-as-code
+job-dsl
+
+# Authentication (for future Keycloak SSO)
+# OpenID Connect Authentication plugin works with Keycloak
+oic-auth
+oidc-provider

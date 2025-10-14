@@ -1,0 +1,22 @@
+api:
+  dashboard: true
+  insecure: true
+
+log:
+  level: DEBUG
+
+providers:
+  docker:
+    exposedByDefault: false
+
+entryPoints:
+  web:
+    address: ":80"
+  # In dev we keep only HTTP and avoid redirects to ease local testing.
+  # Add websecure and ACME in prod config only.
+  metrics:
+    address: ":9100"
+
+metrics:
+  prometheus:
+    entryPoint: metrics

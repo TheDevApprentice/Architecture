@@ -1,0 +1,318 @@
+/**
+ * Employee Onboarding Webhook Pipeline
+ * 
+ * Triggered by external webhook (e.g., HR system, API call)
+ * Automates user creation in Keycloak with proper group assignments
+ * 
+ * Webhook payload example (JSON):
+ * {
+ *   "username": "jdoe",
+ *   "email": "john.doe@company.com",
+ *   "firstName": "John",
+ *   "lastName": "Doe",
+ *   "department": "IT",
+ *   "role": "developer",
+ *   "realm": "internal"
+ * }
+ */
+
+// Load Keycloak library functions directly
+def keycloakAuth
+def keycloakUser
+
+properties([
+    pipelineTriggers([
+        genericTrigger(
+            genericVariables: [
+                [key: 'payload', value: '$'],
+                [key: 'username', value: '$.username'],
+                [key: 'email', value: '$.email'],
+                [key: 'firstName', value: '$.firstName'],
+                [key: 'lastName', value: '$.lastName'],
+                [key: 'department', value: '$.department'],
+                [key: 'role', value: '$.role'],
+                [key: 'realm', value: '$.realm', defaultValue: 'internal']
+            ],
+            causeString: 'Triggered by employee onboarding webhook',
+            token: 'employee-onboarding-secret-token',
+            printContributedVariables: true,
+            printPostContent: true,
+            regexpFilterText: '',
+            regexpFilterExpression: ''
+        )
+    ])
+])
+
+pipeline {
+    agent any
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        NOTIFICATION_EMAIL = 'hr@company.local'
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    // Load library scripts from filesystem
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Parse Webhook Payload') {
+            steps {
+                script {
+                    echo "📦 Parsing webhook payload..."
+                    
+                    // Validate required fields
+                    if (!env.username || !env.email) {
+                        error("Missing required fields: username and email")
+                    }
+                    
+                    echo """
+                    📋 Employee Details:
+                    - Username: ${env.username}
+                    - Email: ${env.email}
+                    - Name: ${env.firstName} ${env.lastName}
+                    - Department: ${env.department}
+                    - Role: ${env.role}
+                    - Realm: ${env.realm}
+                    """
+                }
+            }
+        }
+        
+        stage('Determine Group Assignment') {
+            steps {
+                script {
+                    echo "🎯 Determining group assignment based on department and role..."
+                    
+                    // Map department/role to Keycloak groups
+                    def groupMapping = [
+                        'IT': 'IT',
+                        'Engineering': 'IT',
+                        'DevOps': 'IT',
+                        'Development': 'Jenkins',
+                        'QA': 'Jenkins',
+                        'Support': 'Jenkins'
+                    ]
+                    
+                    env.targetGroup = groupMapping[env.department] ?: 'Jenkins'
+                    
+                    echo "✅ Assigned to group: ${env.targetGroup}"
+                }
+            }
+        }
+        
+        stage('Get Keycloak Access Token') {
+            steps {
+                script {
+                    echo "🔐 Obtaining Keycloak access token..."
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: env.realm
+                    )
+                    echo "✅ Access token obtained"
+                }
+            }
+        }
+        
+        stage('Check if User Exists') {
+            steps {
+                script {
+                    echo "🔍 Checking if user already exists..."
+                    
+                    try {
+                        def userId = keycloakUser.getUserId(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: env.realm,
+                            username: env.username
+                        )
+                        
+                        echo "⚠️  User '${env.username}' already exists with ID: ${userId}"
+                        env.userExists = 'true'
+                        env.userId = userId
+                    } catch (Exception e) {
+                        echo "✅ User does not exist, will create new account"
+                        env.userExists = 'false'
+                    }
+                }
+            }
+        }
+        
+        stage('Create User Account') {
+            when {
+                expression { env.userExists == 'false' }
+            }
+            steps {
+                script {
+                    echo "👤 Creating new user account..."
+                    
+                    // Generate secure password
+                    env.generatedPassword = keycloakUser.generatePassword(16)
+                    
+                    // Create user
+                    env.userId = keycloakUser.createUser(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        accessToken: env.ACCESS_TOKEN,
+                        realm: env.realm,
+                        username: env.username,
+                        email: env.email,
+                        firstName: env.firstName ?: '',
+                        lastName: env.lastName ?: '',
+                        enabled: true,
+                        emailVerified: false,
+                        password: env.generatedPassword,
+                        temporaryPassword: true
+                    )
+                    
+                    echo "✅ User created with ID: ${env.userId}"
+                    echo "🔑 Temporary password generated (will be sent via email)"
+                }
+            }
+        }
+        
+        stage('Update Existing User') {
+            when {
+                expression { env.userExists == 'true' }
+            }
+            steps {
+                script {
+                    echo "✏️  Updating existing user information..."
+                    
+                    keycloakUser.updateUser(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        accessToken: env.ACCESS_TOKEN,
+                        realm: env.realm,
+                        username: env.username,
+                        email: env.email,
+                        firstName: env.firstName ?: '',
+                        lastName: env.lastName ?: '',
+                        enabled: true
+                    )
+                    
+                    echo "✅ User information updated"
+                }
+            }
+        }
+        
+        stage('Assign to Group') {
+            steps {
+                script {
+                    echo "👥 Assigning user to group '${env.targetGroup}'..."
+                    
+                    try {
+                        keycloakUser.addUserToGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: env.realm,
+                            username: env.username,
+                            groupName: env.targetGroup
+                        )
+                        echo "✅ User assigned to group successfully"
+                    } catch (Exception e) {
+                        echo "⚠️  Failed to assign to group: ${e.message}"
+                        echo "User may already be in the group or group doesn't exist"
+                    }
+                }
+            }
+        }
+        
+        stage('Send Welcome Email') {
+            when {
+                expression { env.userExists == 'false' && env.generatedPassword }
+            }
+            steps {
+                script {
+                    echo "📧 Sending welcome email to ${env.email}..."
+                    
+                    def emailBody = """
+                    <html>
+                    <body>
+                        <h2>Welcome to the Company!</h2>
+                        <p>Hello ${env.firstName} ${env.lastName},</p>
+                        <p>Your account has been created. Here are your login credentials:</p>
+                        <ul>
+                            <li><strong>Username:</strong> ${env.username}</li>
+                            <li><strong>Temporary Password:</strong> ${env.generatedPassword}</li>
+                            <li><strong>Login URL:</strong> http://${env.KC_URL_INTERNAL}</li>
+                        </ul>
+                        <p><strong>Important:</strong> You will be required to change your password on first login.</p>
+                        <p>You have been assigned to the <strong>${env.targetGroup}</strong> group.</p>
+                        <p>If you have any questions, please contact IT support.</p>
+                        <br>
+                        <p>Best regards,<br>IT Team</p>
+                    </body>
+                    </html>
+                    """
+                    
+                    // In production, use proper email plugin
+                    echo "Email content prepared (email sending would happen here in production)"
+                    
+                    // Example with emailext plugin (uncomment when configured):
+                    /*
+                    emailext(
+                        to: env.email,
+                        subject: "Welcome to Company - Your Account Details",
+                        body: emailBody,
+                        mimeType: 'text/html'
+                    )
+                    */
+                }
+            }
+        }
+        
+        stage('Notify HR') {
+            steps {
+                script {
+                    echo "📬 Notifying HR department..."
+                    
+                    def status = env.userExists == 'true' ? 'updated' : 'created'
+                    
+                    echo """
+                    ✅ Onboarding completed successfully!
+                    - User: ${env.username}
+                    - Status: ${status}
+                    - Group: ${env.targetGroup}
+                    - Realm: ${env.realm}
+                    """
+                    
+                    // In production, send notification to HR
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                echo "✅ Employee onboarding completed successfully!"
+                echo "User '${env.username}' is ready to access the system."
+            }
+        }
+        failure {
+            script {
+                echo "❌ Employee onboarding failed!"
+                echo "Please check the logs and retry manually."
+                
+                // In production, send alert to IT/HR
+            }
+        }
+        always {
+            script {
+                // Clean up sensitive data
+                env.ACCESS_TOKEN = null
+                env.generatedPassword = null
+            }
+        }
+    }
+}

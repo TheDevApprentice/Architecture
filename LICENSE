@@ -1,21 +1,107 @@
-MIT License
+NON-COMMERCIAL LICENSE WITH COMMERCIAL APPROVAL REQUIREMENT
 
 Copyright (c) 2025 Hugo Abric
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+TERMS AND CONDITIONS
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. DEFINITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   "Software" refers to the Cloud-Ready DevOps Platform - Infrastructure as Code
+   and all associated documentation, configuration files, and source code.
+
+   "Non-Commercial Use" means use of the Software for personal, educational,
+   research, or non-profit purposes where no monetary compensation or commercial
+   advantage is derived.
+
+   "Commercial Use" means any use of the Software in connection with business
+   activities, including but not limited to: use in a commercial product or
+   service, use to provide services for compensation, use in support of
+   commercial operations, or any use that generates revenue or commercial benefit.
+
+   "Licensor" refers to Hugo Abric, the copyright holder.
+
+2. GRANT OF LICENSE
+
+   2.1 Non-Commercial Use
+   
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this Software, to use, copy, modify, merge, publish, and distribute the
+   Software for Non-Commercial Use only, subject to the following conditions:
+
+   a) The above copyright notice and this license shall be included in all
+      copies or substantial portions of the Software.
+   
+   b) Any modifications or derivative works must also be licensed under these
+      same terms.
+   
+   c) You must clearly indicate if changes were made to the original Software.
+
+   2.2 Commercial Use
+   
+   Commercial Use of this Software is PROHIBITED without prior written approval
+   from the Licensor. To request permission for Commercial Use:
+
+   a) Contact the Licensor at: hugo.abric@outlook.fr
+   
+   b) Provide a detailed description of the intended Commercial Use.
+   
+   c) Obtain explicit written consent before any Commercial Use.
+   
+   d) Comply with any additional terms specified in the written approval.
+
+3. RESTRICTIONS
+
+   You may NOT:
+   
+   a) Use the Software for Commercial Use without written approval from the
+      Licensor.
+   
+   b) Remove or alter any copyright notices, license terms, or attributions.
+   
+   c) Sublicense, sell, or lease the Software without written approval.
+   
+   d) Use the Licensor's name, trademarks, or branding without permission.
+
+4. ATTRIBUTION
+
+   When using or distributing the Software, you must provide clear attribution
+   to the original author:
+   
+   "Based on Cloud-Ready DevOps Platform by Hugo Abric
+   (https://github.com/TheDevApprentice/Architecture)"
+
+5. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+7. TERMINATION
+
+   This license automatically terminates if you violate any of its terms. Upon
+   termination, you must cease all use of the Software and destroy all copies
+   in your possession.
+
+8. GOVERNING LAW
+
+   This license shall be governed by and construed in accordance with the laws
+   of France, without regard to its conflict of law provisions.
+
+9. ENTIRE AGREEMENT
+
+   This license constitutes the entire agreement between you and the Licensor
+   regarding the use of the Software and supersedes all prior agreements.
+
+---
+
+For commercial licensing inquiries, please contact:
+Hugo Abric
+Email: menuwebservice@gmail.com
+GitHub: https://github.com/TheDevApprentice

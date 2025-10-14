@@ -1,0 +1,49 @@
+name: CI/CD/DEVOPS
+
+services:
+  jenkins:
+    container_name: jenkins
+    build:
+      context: ./server/jenkins
+      dockerfile: Dockerfile
+    image: jenkins-lts:latest
+    ports:
+      - "${JENKINS_AGENT_PORT}:50000"
+      - "${JENKINS_SSH_PORT}:2222"
+    environment:
+      - TZ=${TZ}
+      - HOST=${HOST}
+      - CASC_JENKINS_CONFIG=/usr/share/jenkins/ref/casc_configs/jenkins.yaml
+      - JENKINS_URL=${JENKINS_URL}
+      - KC_URL=${KC_URL}
+      - KC_URL_INTERNAL=${KC_URL_INTERNAL}
+      - KC_REALM=${KC_REALM}
+      - KC_ADMIN_USER=${KC_ADMIN_USERNAME}
+      - KC_ADMIN_PASSWORD=${KC_ADMIN_PASSWORD}
+      - KC_CLIENT_ID_JENKINS_AUTOMATION=${KC_CLIENT_ID_JENKINS_AUTOMATION}
+      - KC_SECRET_JENKINS_AUTOMATION=${KC_SECRET_JENKINS_AUTOMATION}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - JAVA_OPTS=${JAVA_OPTS}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+    extra_hosts:
+      - "${KC_URL}:host-gateway"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jenkins.rule=Host(`${JENKINS_URL}`)"
+      - "traefik.http.routers.jenkins.entrypoints=web"
+      - "traefik.http.services.jenkins.loadbalancer.server.port=${JENKINS_HTTP_PORT}"
+      - "traefik.http.routers.jenkins.service=jenkins"
+      - "traefik.http.routers.jenkins.priority=100"
+      - "traefik.docker.network=proxy"
+
+volumes:
+  jenkins_home:
+
+networks:
+  proxy:
+    external: true
