@@ -24,6 +24,23 @@ COPY ./config/plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN mkdir -p /usr/share/jenkins/ref/casc_configs
 COPY ./config/jenkins.yaml /usr/share/jenkins/ref/casc_configs/jenkins.yaml
 
+# Copy pipelines and shared library
+RUN mkdir -p /usr/share/jenkins/ref/pipelines
+COPY ./config/pipelines/ /usr/share/jenkins/ref/pipelines/
+
+# Copy shared library to /var/jenkins_home (will be preserved with Docker named volume)
+RUN mkdir -p /var/jenkins_home/workflow-libs/keycloak-lib
+COPY ./config/shared-library/ /var/jenkins_home/workflow-libs/keycloak-lib/
+
+# Copy init scripts for automatic job creation at startup
+RUN mkdir -p /usr/share/jenkins/ref/init.groovy.d
+COPY ./config/init.groovy.d/ /usr/share/jenkins/ref/init.groovy.d/
+
+# Set proper ownership for jenkins user
+RUN chown -R jenkins:jenkins /usr/share/jenkins/ref/pipelines
+RUN chown -R jenkins:jenkins /usr/share/jenkins/ref/init.groovy.d
+RUN chown -R jenkins:jenkins /var/jenkins_home/workflow-libs
+
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
 
 # -----------------------------
