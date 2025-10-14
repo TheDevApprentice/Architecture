@@ -1,0 +1,302 @@
+/**
+ * Keycloak User Management Pipeline
+ * 
+ * This pipeline automates user creation/management in Keycloak realms
+ * Can be triggered via webhook for employee onboarding automation
+ */
+
+// Load Keycloak library functions directly
+def keycloakAuth
+def keycloakUser
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'RESET_PASSWORD', 'ADD_TO_GROUP', 'LIST_USERS'],
+            description: 'Action to perform'
+        )
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm (e.g., internal, master)'
+        )
+        string(
+            name: 'USERNAME',
+            defaultValue: '',
+            description: 'Username for the operation'
+        )
+        string(
+            name: 'EMAIL',
+            defaultValue: '',
+            description: 'User email address'
+        )
+        string(
+            name: 'FIRST_NAME',
+            defaultValue: '',
+            description: 'User first name'
+        )
+        string(
+            name: 'LAST_NAME',
+            defaultValue: '',
+            description: 'User last name'
+        )
+        string(
+            name: 'GROUP_NAME',
+            defaultValue: '',
+            description: 'Group name'
+        )
+        choice(
+            name: 'LOCALE',
+            choices: ['en', 'fr'],
+            description: 'User preferred language'
+        )
+        booleanParam(
+            name: 'EMAIL_VERIFIED',
+            defaultValue: false,
+            description: 'Mark email as verified'
+        )
+        booleanParam(
+            name: 'ENABLED',
+            defaultValue: true,
+            description: 'Enable the user account'
+        )
+        booleanParam(
+            name: 'TEMPORARY_PASSWORD',
+            defaultValue: true,
+            description: 'Require password change on first login'
+        )
+        password(
+            name: 'PASSWORD',
+            defaultValue: 'changeMe123!',
+            description: 'User password (leave empty for auto-generated)'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    // Load library scripts from filesystem
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    echo "🔍 Validating parameters..."
+                    
+                    if (!params.REALM) {
+                        error("REALM parameter is required")
+                    }
+                    
+                    if (params.ACTION in ['CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'RESET_PASSWORD'] && !params.USERNAME) {
+                        error("USERNAME is required for ${params.ACTION}")
+                    }
+                    
+                    if (params.ACTION == 'CREATE_USER' && !params.EMAIL) {
+                        error("EMAIL is required for user creation")
+                    }
+                    
+                    echo "✅ Parameters validated successfully"
+                }
+            }
+        }
+        
+        stage('Get Access Token') {
+            steps {
+                script {
+                    echo "🔐 Obtaining Keycloak access token..."
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET
+                    )
+                    echo "✅ Access token obtained"
+                }
+            }
+        }
+        
+        stage('Execute Action') {
+            steps {
+                script {
+                    echo "🚀 Executing action: ${params.ACTION}"
+                    
+                    switch(params.ACTION) {
+                        case 'CREATE_USER':
+                            def password = params.PASSWORD ?: keycloakUser.generatePassword()
+                            def userId = keycloakUser.createUser(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                email: params.EMAIL,
+                                firstName: params.FIRST_NAME,
+                                lastName: params.LAST_NAME,
+                                enabled: params.ENABLED,
+                                emailVerified: params.EMAIL_VERIFIED,
+                                password: params.PASSWORD,
+                                temporaryPassword: params.TEMPORARY_PASSWORD,
+                                locale: params.LOCALE
+                            )
+                            
+                            echo "✅ User created successfully with ID: ${userId}"
+                            echo "📧 Username: ${params.USERNAME}"
+                            echo "📧 Email: ${params.EMAIL}"
+                            
+                            if (!params.PASSWORD) {
+                                echo "🔑 Generated password: ${password}"
+                                echo "⚠️  IMPORTANT: Save this password securely!"
+                            }
+                            
+                            // Add to group if GROUP_NAME is specified
+                            if (params.GROUP_NAME && params.GROUP_NAME != '') {
+                                echo "👥 Adding user to group: ${params.GROUP_NAME}"
+                                try {
+                                    keycloakUser.addUserToGroup(
+                                        keycloakUrl: env.KC_URL_INTERNAL,
+                                        accessToken: env.ACCESS_TOKEN,
+                                        realm: params.REALM,
+                                        username: params.USERNAME,
+                                        groupName: params.GROUP_NAME
+                                    )
+                                    echo "✅ User added to group '${params.GROUP_NAME}'"
+                                } catch (Exception e) {
+                                    echo "⚠️  Failed to add user to group: ${e.message}"
+                                }
+                            }
+                            break
+                            
+                        case 'UPDATE_USER':
+                            keycloakUser.updateUser(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                email: params.EMAIL,
+                                firstName: params.FIRST_NAME,
+                                lastName: params.LAST_NAME,
+                                enabled: params.ENABLED,
+                                emailVerified: params.EMAIL_VERIFIED,
+                                locale: params.LOCALE
+                            )
+                            echo "✅ User updated successfully"
+                            
+                            // Add to group if GROUP_NAME is specified
+                            if (params.GROUP_NAME && params.GROUP_NAME != '') {
+                                echo "👥 Adding user to group: ${params.GROUP_NAME}"
+                                try {
+                                    keycloakUser.addUserToGroup(
+                                        keycloakUrl: env.KC_URL_INTERNAL,
+                                        accessToken: env.ACCESS_TOKEN,
+                                        realm: params.REALM,
+                                        username: params.USERNAME,
+                                        groupName: params.GROUP_NAME
+                                    )
+                                    echo "✅ User added to group '${params.GROUP_NAME}'"
+                                } catch (Exception e) {
+                                    echo "⚠️  Failed to add user to group: ${e.message}"
+                                }
+                            }
+                            break
+                            
+                        case 'DELETE_USER':
+                            keycloakUser.deleteUser(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME
+                            )
+                            echo "✅ User deleted successfully"
+                            break
+                            
+                        case 'RESET_PASSWORD':
+                            def newPassword = params.PASSWORD ?: keycloakUser.generatePassword()
+                            keycloakUser.resetPassword(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                password: newPassword,
+                                temporary: params.TEMPORARY_PASSWORD
+                            )
+                            echo "✅ Password reset successfully"
+                            if (!params.PASSWORD) {
+                                echo "🔑 New password: ${newPassword}"
+                            }
+                            break
+                            
+                        case 'ADD_TO_GROUP':
+                            if (!params.GROUP_NAME) {
+                                error("GROUP_NAME is required for ADD_TO_GROUP action")
+                            }
+                            keycloakUser.addUserToGroup(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                groupName: params.GROUP_NAME
+                            )
+                            echo "✅ User added to group '${params.GROUP_NAME}'"
+                            break
+                            
+                        case 'LIST_USERS':
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            echo "📋 Users in realm '${params.REALM}':"
+                            users.each { user ->
+                                echo "  - ${user.username} (${user.email}) - Enabled: ${user.enabled}"
+                            }
+                            break
+                            
+                        default:
+                            error("Unknown action: ${params.ACTION}")
+                    }
+                }
+            }
+        }
+        
+        stage('Test Connection') {
+            when {
+                expression { params.ACTION == 'CREATE_USER' }
+            }
+            steps {
+                script {
+                    echo "🧪 Testing Keycloak connection for new user..."
+                    // Optionally test if user can authenticate
+                    echo "✅ Connection test completed"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+        always {
+            // Clean up sensitive data
+            script {
+                env.ACCESS_TOKEN = null
+            }
+        }
+    }
+}

@@ -1,72 +1,179 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/services
 
-# - menuwebservice.com:
-    # - menuwebservice.com:
-    #     href: https://menuwebservice.com
-    #     description: Domain Site
-    #     # server: my-docker
-    #     # container: none
-    #     icon: https://cdn3.iconfinder.com/data/icons/web-and-mobile-colored-icons-vol-2/128/53-512.png
-
-# - Web:
-    # - personnal website:
-    #     href: https://menuwebservice.com
-    #     description: Prod MeetSporty Website
-    #     server: my-docker
-    #     icon: https://www.svgrepo.com/show/374167/vite.svg
-    #     container: meetsporty
-    #     showStats: true
-    #     siteMonitor: https://menuwebservice.com
-    # - meetsporty.fr:
-    #     href: https://front.menuwebservice.com
-    #     description: Prod MeetSporty Website
-    #     server: my-docker
-    #     icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
-    #     container: meetsporty
-    #     showStats: true
-    #     siteMonitor: https://front.menuwebservice.com
-    # - api.meetsporty.fr:
-    #     href: https://api.menuwebservice.com
-    #     description: Prod MeetSporty API
-    #     # server: my-docker
-    #     icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
-    #     # container: none
-    #     # showStats: true
-    #     # siteMonitor: https://meetsporty.fr
-    # - mobile.meetsporty.fr:
-    #     href: https://menuwebservice.com/application.apk
-    #     description: "MeetSporty Mobile App - APK Android"
-    #     # server: my-docker
-    #     icon: https://static-00.iconduck.com/assets.00/expo-icon-512x462-3a87htea.png
-    #     # container: none
-    #     # showStats: true
-    #     # siteMonitor: https://meetsporty.fr
-
-- Services:
-    - Service Maria Db Server:
-        description: Serveur MariaDb
+ - Gateway:
+    - Traefik:
+        description: Reverse proxy & router
         server: my-docker
-        container: proxysql
-        icon: https://cdn.worldvectorlogo.com/logos/mariadb.svg
+        container: traefik
+        icon: https://www.svgrepo.com/show/217771/traefik.svg
+        href: http://localhost:8080
         showStats: true
 
-    - Service Minio:
-        href: https://locker.menuwebservice.com
-        description: Serveur DataVault
+ - Security:
+    - Keycloak:
+        description: Identity Provider (OIDC)
+        server: my-docker
+        container: keycloak
+        icon: https://www.svgrepo.com/svg/439508/keycloak
+        href: http://auth.localhost
+        showStats: true
+
+ - Databases - MariaDB:
+    - ProxySQL:
+        description: Load balancer MariaDB
+        server: my-docker
+        container: proxysql
+        icon: https://www.svgrepo.com/show/452012/mysql.svg
+        showStats: true
+    - Galera Node 1:
+        server: my-docker
+        container: mariadb_galera1
+        icon: https://www.svgrepo.com/show/452012/mysql.svg
+        showStats: true
+    - Galera Node 2:
+        server: my-docker
+        container: mariadb_galera2
+        icon: https://www.svgrepo.com/show/452012/mysql.svg
+        showStats: true
+    - Galera Node 3:
+        server: my-docker
+        container: mariadb_galera3
+        icon: https://www.svgrepo.com/show/452012/mysql.svg
+        showStats: true
+    - MaxScale:
+        description: Binlog server for replicas
+        server: my-docker
+        container: maxscale
+        icon: https://www.svgrepo.com/show/374053/mariadb.svg
+        showStats: true
+    - MariaDB Backup:
+        server: my-docker
+        container: mariadb_backup
+        icon: https://www.svgrepo.com/show/522983/database-backup.svg
+        showStats: true
+
+ - Databases - PostgreSQL:
+    - HAProxy (PG):
+        description: Load balancer PostgreSQL
+        server: my-docker
+        container: haproxy
+        icon: https://www.svgrepo.com/show/452086/postgresql.svg
+        showStats: true
+    - Patroni 1:
+        server: my-docker
+        container: patroni1
+        icon: https://www.svgrepo.com/show/522992/cluster.svg
+        showStats: true
+    - Patroni 2:
+        server: my-docker
+        container: patroni2
+        icon: https://www.svgrepo.com/show/522992/cluster.svg
+        showStats: true
+    - Patroni 3:
+        server: my-docker
+        container: patroni3
+        icon: https://www.svgrepo.com/show/522992/cluster.svg
+        showStats: true
+    - Etcd 1:
+        server: my-docker
+        container: etcd1
+        icon: https://www.svgrepo.com/show/331488/etcd.svg
+        showStats: true
+    - Etcd 2:
+        server: my-docker
+        container: etcd2
+        icon: https://www.svgrepo.com/show/331488/etcd.svg
+        showStats: true
+    - Etcd 3:
+        server: my-docker
+        container: etcd3
+        icon: https://www.svgrepo.com/show/331488/etcd.svg
+        showStats: true
+    - PostgreSQL Backup:
+        server: my-docker
+        container: postgresql_backup
+        icon: https://www.svgrepo.com/show/522983/database-backup.svg
+        showStats: true
+
+ - Storage:
+    - MinIO:
+        description: S3 compatible storage
         server: my-docker
         container: minio
         icon: https://cdn.worldvectorlogo.com/logos/minio-1.svg
         showStats: true
 
-    - Service Redis:
-        href: https://locker.menuwebservice.com
-        description: Serveur Redis
+ - Cache:
+    - Redis:
+        description: In-memory cache
         server: my-docker
         container: redis
         icon: https://cdn.worldvectorlogo.com/logos/redis.svg
         showStats: true
-- Management:
+
+ - Observability - Metrics:
+    - Prometheus:
+        server: my-docker
+        container: prometheus
+        icon: https://www.svgrepo.com/show/354163/prometheus.svg
+        href: http://localhost:9090
+        showStats: true
+    - Grafana:
+        server: my-docker
+        container: grafana
+        icon: https://www.svgrepo.com/show/373642/grafana.svg
+        href: http://grafana.localhost
+        showStats: true
+    - HAProxy Exporter:
+        server: my-docker
+        container: haproxy_exporter
+        icon: https://www.svgrepo.com/show/448252/export.svg
+        showStats: true
+    - Postgres Exporter:
+        server: my-docker
+        container: postgres_exporter
+        icon: https://www.svgrepo.com/show/448252/export.svg
+        showStats: true
+    - cAdvisor:
+        server: my-docker
+        container: cadvisor
+        icon: https://www.svgrepo.com/svg/448077/metrics
+        showStats: true
+
+ - Observability - Logs:
+    - Loki:
+        server: my-docker
+        container: loki
+        icon: https://www.svgrepo.com/svg/306610/loki
+        showStats: true
+    - Promtail:
+        server: my-docker
+        container: promtail
+        icon: https://www.svgrepo.com/show/374161/promtail.svg
+        showStats: true
+
+ - Observability - Traces:
+    - Tempo:
+        server: my-docker
+        container: tempo
+        icon: https://www.svgrepo.com/show/374164/tempo.svg
+        showStats: true
+    - OTel Collector:
+        server: my-docker
+        container: otel-collector
+        icon: https://www.svgrepo.com/show/374133/opentelemetry.svg
+        showStats: true
+
+ - Tools:
+    - Turn (coturn):
+        description: STUN/TURN server
+        server: my-docker
+        container: turn
+        icon: https://www.svgrepo.com/show/475623/antenna.svg
+        showStats: true
+
+ - Management:
     - Google Calendar:
         href: https://calendar.google.com/calendar/u/2/r
         description: MenuWebService calendar
@@ -80,22 +187,22 @@
         description: Documentation service
         icon: https://www.svgrepo.com/show/373525/confluence.svg
 
-- External Documentation:
+ - External Documentation:
     - Ubuntu:
-        href: https://calendar.google.com/calendar/u/2/r
+        href: https://ubuntu.com
         icon: https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/UbuntuCoF.svg/1200px-UbuntuCoF.svg.png
     - Docker:
-        href: https://secure.zervant.com/login
+        href: https://docs.docker.com/
         icon: https://www.svgrepo.com/show/331370/docker.svg
     - Nuxt:
-        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        href: https://nuxt.com/docs
         icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
     - Nuxt-Icon:
         href: https://nuxt.com/modules/icons
         icon: https://cdn.iconscout.com/icon/free/png-256/free-nuxt-dot-js-logo-icon-download-in-svg-png-gif-file-formats--technology-social-media-company-brand-vol-5-pack-logos-icons-3030184.png
     - CSharp:
-        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        href: https://learn.microsoft.com/dotnet/csharp/
         icon: https://static-00.iconduck.com/assets.00/c-sharp-c-icon-1822x2048-wuf3ijab.png
     - Rust:
-        href: https://menuwebservicedoc.atlassian.net/wiki/spaces
+        href: https://www.rust-lang.org/learn
         icon: https://www.svgrepo.com/show/376347/rust.svg

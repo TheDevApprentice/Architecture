@@ -19,7 +19,13 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+  metrics:
+    address: ":9100"
 
+metrics:
+  prometheus:
+    entryPoint: metrics
+    
 certificatesResolvers:
   le:
     acme:
