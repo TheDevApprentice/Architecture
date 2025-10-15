@@ -12,6 +12,12 @@ def keycloakGroup
 def keycloakClient
 def keycloakAudit
 
+def unverifiedUsers = []
+def inactiveUsers = []
+def disabledUsers = []
+def orphanGroups = []
+def serviceAccounts = []
+
 pipeline {
     agent any
     
@@ -102,11 +108,11 @@ pipeline {
             steps {
                 script {
                     echo "🔍 Checking for users with unverified emails..."
-                    env.UNVERIFIED_USERS = keycloakAudit.detectUnverifiedEmails(
+                    unverifiedUsers = keycloakAudit.detectUnverifiedEmails(
                         accessToken: env.ACCESS_TOKEN
                     )
                     
-                    def count = env.UNVERIFIED_USERS.size()
+                    def count = unverifiedUsers.size()
                     echo "📊 Result: ${count} users with unverified emails"
                     
                     if (count > params.UNVERIFIED_EMAIL_THRESHOLD.toInteger()) {
@@ -120,12 +126,12 @@ pipeline {
             steps {
                 script {
                     echo "🔍 Checking for inactive users (>${params.INACTIVE_DAYS_THRESHOLD} days)..."
-                    env.INACTIVE_USERS = keycloakAudit.detectInactiveUsers(
+                    inactiveUsers = keycloakAudit.detectInactiveUsers(
                         accessToken: env.ACCESS_TOKEN,
                         inactiveDays: params.INACTIVE_DAYS_THRESHOLD.toInteger()
                     )
                     
-                    def count = env.INACTIVE_USERS.size()
+                    def count = inactiveUsers.size()
                     echo "📊 Result: ${count} inactive users"
                     
                     if (count > params.INACTIVE_USERS_THRESHOLD.toInteger()) {
@@ -139,11 +145,11 @@ pipeline {
             steps {
                 script {
                     echo "🔍 Checking for disabled users..."
-                    env.DISABLED_USERS = keycloakAudit.detectDisabledUsers(
+                    disabledUsers = keycloakAudit.detectDisabledUsers(
                         accessToken: env.ACCESS_TOKEN
                     )
                     
-                    def count = env.DISABLED_USERS.size()
+                    def count = disabledUsers.size()
                     echo "📊 Result: ${count} disabled users"
                 }
             }
@@ -153,11 +159,11 @@ pipeline {
             steps {
                 script {
                     echo "🔍 Checking for orphan groups (no members)..."
-                    env.ORPHAN_GROUPS = keycloakGroup.detectOrphanGroups(
+                    orphanGroups = keycloakGroup.detectOrphanGroups(
                         accessToken: env.ACCESS_TOKEN
                     )
                     
-                    def count = env.ORPHAN_GROUPS.size()
+                    def count = orphanGroups.size()
                     echo "📊 Result: ${count} orphan groups"
                 }
             }
@@ -171,8 +177,8 @@ pipeline {
                         accessToken: env.ACCESS_TOKEN
                     )
                     
-                    env.SERVICE_ACCOUNTS = clients.findAll { it.serviceAccountsEnabled }
-                    def count = env.SERVICE_ACCOUNTS.size()
+                    serviceAccounts = clients.findAll { it["serviceAccountsEnabled"] }
+                    def count = serviceAccounts.size()
                     echo "📊 Result: ${count} service accounts"
                 }
             }
@@ -185,15 +191,15 @@ pipeline {
                     echo "=" * 80
                     
                     def auditResults = [
-                        unverifiedEmails: env.UNVERIFIED_USERS.size(),
-                        unverifiedEmailsList: env.UNVERIFIED_USERS,
-                        inactiveUsers: env.INACTIVE_USERS.size(),
-                        inactiveUsersList: env.INACTIVE_USERS,
-                        disabledUsers: env.DISABLED_USERS.size(),
-                        disabledUsersList: env.DISABLED_USERS,
-                        orphanGroups: env.ORPHAN_GROUPS.size(),
-                        orphanGroupsList: env.ORPHAN_GROUPS,
-                        serviceAccounts: env.SERVICE_ACCOUNTS.size(),
+                        unverifiedEmails: unverifiedUsers.size(),
+                        unverifiedEmailsList: unverifiedUsers,
+                        inactiveUsers: inactiveUsers.size(),
+                        inactiveUsersList: inactiveUsers,
+                        disabledUsers: disabledUsers.size(),
+                        disabledUsersList: disabledUsers,
+                        orphanGroups: orphanGroups.size(),
+                        orphanGroupsList: orphanGroups,
+                        serviceAccounts: serviceAccounts.size(),
                         timestamp: new Date().format("yyyy-MM-dd HH:mm:ss"),
                         realm: params.REALM
                     ]
@@ -242,19 +248,19 @@ pipeline {
                     echo "🏢 Realm: ${params.REALM}"
                     echo ""
                     echo "📊 FINDINGS:"
-                    echo "  • Unverified Emails: ${env.UNVERIFIED_USERS.size()}"
-                    echo "  • Inactive Users: ${env.INACTIVE_USERS.size()} (>${params.INACTIVE_DAYS_THRESHOLD}d)"
-                    echo "  • Disabled Users: ${env.DISABLED_USERS.size()}"
-                    echo "  • Orphan Groups: ${env.ORPHAN_GROUPS.size()}"
-                    echo "  • Service Accounts: ${env.SERVICE_ACCOUNTS.size()}"
+                    echo "  • Unverified Emails: ${unverifiedUsers.size()}"
+                    echo "  • Inactive Users: ${inactiveUsers.size()} (>${params.INACTIVE_DAYS_THRESHOLD}d)"
+                    echo "  • Disabled Users: ${disabledUsers.size()}"
+                    echo "  • Orphan Groups: ${orphanGroups.size()}"
+                    echo "  • Service Accounts: ${serviceAccounts.size()}"
                     echo ""
                     
                     def criticalIssues = 0
-                    if (env.UNVERIFIED_USERS.size() > params.UNVERIFIED_EMAIL_THRESHOLD.toInteger()) {
+                    if (unverifiedUsers.size() > params.UNVERIFIED_EMAIL_THRESHOLD.toInteger()) {
                         echo "⚠️  CRITICAL: Unverified emails exceed threshold!"
                         criticalIssues++
                     }
-                    if (env.INACTIVE_USERS.size() > params.INACTIVE_USERS_THRESHOLD.toInteger()) {
+                    if (inactiveUsers.size() > params.INACTIVE_USERS_THRESHOLD.toInteger()) {
                         echo "⚠️  CRITICAL: Inactive users exceed threshold!"
                         criticalIssues++
                     }

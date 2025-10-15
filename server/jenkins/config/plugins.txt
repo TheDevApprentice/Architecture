@@ -33,6 +33,9 @@ matrix-auth
 junit
 warnings-ng
 
+# Reports and publishing
+htmlpublisher
+
 # Notifications
 mailer
 email-ext
