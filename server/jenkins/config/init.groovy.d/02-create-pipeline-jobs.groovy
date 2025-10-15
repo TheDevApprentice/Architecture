@@ -223,6 +223,98 @@ Management of service accounts (M2M) with secret rotation:
     println "[init] ℹ️  'keycloak-service-account-management' pipeline already exists"
 }
 
+// ============================================================================
+// 7. Keycloak Security Audit Pipeline
+// ============================================================================
+
+def securityAuditJob = keycloakFolder.getItem('keycloak-security-audit')
+if (securityAuditJob == null) {
+    println "[init] 🔒 Creating 'keycloak-security-audit' pipeline in Keycloak folder..."
+    
+    securityAuditJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-security-audit')
+    securityAuditJob.description = '''🔒 Keycloak Security Audit Pipeline
+
+Automated security audit with detailed reporting:
+- Unverified emails detection
+- Inactive users (>90 days)
+- Disabled users
+- Orphan groups
+- Service accounts audit
+- Multiple report formats (HTML, JSON, CSV)
+- Scheduled daily execution'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-security-audit.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    securityAuditJob.setDefinition(flowDefinition)
+    
+    securityAuditJob.save()
+    println "[init] ✅ 'keycloak-security-audit' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-security-audit' pipeline already exists"
+}
+
+// ============================================================================
+// 8. Keycloak Session Management Pipeline
+// ============================================================================
+
+def sessionManagementJob = keycloakFolder.getItem('keycloak-session-management')
+if (sessionManagementJob == null) {
+    println "[init] 🔐 Creating 'keycloak-session-management' pipeline in Keycloak folder..."
+    
+    sessionManagementJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-session-management')
+    sessionManagementJob.description = '''🔐 Keycloak Session Management Pipeline
+
+Management of active user sessions:
+- LIST_ACTIVE_SESSIONS
+- LIST_USER_SESSIONS
+- REVOKE_USER_SESSIONS
+- REVOKE_ALL_SESSIONS (Emergency)
+- SESSION_STATISTICS
+- DETECT_ANOMALIES (long-running, multiple IPs)'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-session-management.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    sessionManagementJob.setDefinition(flowDefinition)
+    
+    sessionManagementJob.save()
+    println "[init] ✅ 'keycloak-session-management' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-session-management' pipeline already exists"
+}
+
+// ============================================================================
+// 9. Keycloak Compliance Reporting Pipeline
+// ============================================================================
+
+def complianceReportJob = keycloakFolder.getItem('keycloak-compliance-report')
+if (complianceReportJob == null) {
+    println "[init] 📊 Creating 'keycloak-compliance-report' pipeline in Keycloak folder..."
+    
+    complianceReportJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-compliance-report')
+    complianceReportJob.description = '''📊 Keycloak Compliance Reporting Pipeline
+
+Generate compliance reports:
+- FULL_COMPLIANCE
+- ACCESS_REVIEW
+- PRIVILEGED_ACCOUNTS
+- PASSWORD_POLICY
+- CLIENT_SECRETS_AUDIT
+- MFA_ADOPTION
+- Multiple formats (HTML, PDF, CSV, JSON)'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-compliance-report.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    complianceReportJob.setDefinition(flowDefinition)
+    
+    complianceReportJob.save()
+    println "[init] ✅ 'keycloak-compliance-report' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-compliance-report' pipeline already exists"
+}
+
 jenkins.save()
 
 println "=" * 80
@@ -234,5 +326,8 @@ println "[init]    - keycloak-group-management"
 println "[init]    - keycloak-rbac-automation"
 println "[init]    - keycloak-client-management"
 println "[init]    - keycloak-service-account-management"
+println "[init]    - keycloak-security-audit"
+println "[init]    - keycloak-session-management"
+println "[init]    - keycloak-compliance-report"
 println "[init]    - Test-Keycloak-Integration"
 println "=" * 80
