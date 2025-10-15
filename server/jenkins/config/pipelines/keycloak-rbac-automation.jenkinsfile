@@ -68,9 +68,9 @@ pipeline {
             steps {
                 script {
                     // Load library scripts from filesystem
-                    keycloakAuth = load '/var/jenkins_home/shared-library/vars/keycloakAuth.groovy'
-                    keycloakUser = load '/var/jenkins_home/shared-library/vars/keycloakUser.groovy'
-                    keycloakGroup = load '/var/jenkins_home/shared-library/vars/keycloakGroup.groovy'
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    keycloakGroup = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakGroup.groovy'
                     echo "✅ Keycloak library loaded successfully"
                 }
             }
@@ -235,8 +235,10 @@ pipeline {
             echo "❌ Pipeline failed!"
         }
         always {
-            // Clean sensitive data
-            env.ACCESS_TOKEN = null
+            script {
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+            }
         }
     }
 }
