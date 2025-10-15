@@ -101,22 +101,7 @@ pipelineJob('Keycloak-User-Management') {
     }
 }
 
-// 2. Employee Onboarding Webhook Pipeline
-pipelineJob('Employee-Onboarding-Webhook') {
-    description('Automated employee onboarding via webhook trigger')
-    
-    definition {
-        cps {
-            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/employee-onboarding-webhook.jenkinsfile'))
-            sandbox(true)
-        }
-    }
-    
-    // Note: Generic webhook trigger configuration needs to be added manually
-    // or configured via Jenkins Configuration as Code (JCasC)
-}
-
-// 3. Test Keycloak Integration Pipeline
+// 2. Test Keycloak Integration Pipeline
 pipelineJob('Test-Keycloak-Integration') {
     description('Test suite for Keycloak API integration')
     
