@@ -3,6 +3,7 @@
 ## 📋 Table des Matières
 
 - [Vue d'ensemble](#vue-densemble)
+- [Architecture Jenkins](#architecture-jenkins)
 - [Pipelines v0.2.0 - Focus Aujourd'hui](#pipelines-v020---focus-aujourdhui)
 - [Shared Library Extensions](#shared-library-extensions)
 - [Workflows Avancés](#workflows-avancés)
@@ -31,6 +32,152 @@ Créer un **écosystème de pipelines Jenkins modulaire** pour automatiser la ge
 **Client Management** : 2 pipelines | CRUD clients + service accounts
 **Security & Audit**  : 3 pipelines | Audit sécurité + sessions + compliance
 **Maintenance**       : 1 pipeline  | Cleanup automatique
+
+---
+
+## Architecture Jenkins
+
+### 📁 Structure Organisationnelle
+
+**Organisation hiérarchique avec Folders et Views pour scalabilité et maintenabilité**
+
+```
+Keycloak/ (Folder)
+├── 📊 Views
+│   ├── Management (View) - Pipelines de gestion
+│   └── Tests (View)      - Tests d'intégration
+│
+├── User/ (Folder)
+│   └── keycloak-user-management (Pipeline)
+│
+├── Group/ (Folder)
+│   ├── keycloak-group-management (Pipeline)
+│   └── keycloak-rbac-automation (Pipeline)
+│
+├── Client/ (Folder)
+│   ├── keycloak-client-management (Pipeline)
+│   └── keycloak-service-account-management (Pipeline)
+│
+├── Security-Audit/ (Folder)
+│   ├── keycloak-security-audit (Pipeline)
+│   ├── keycloak-session-management (Pipeline)
+│   └── keycloak-compliance-report (Pipeline)
+│
+├── Maintenance/ (Folder)
+│   └── keycloak-cleanup (Pipeline)
+│
+└── [FUTUR v0.3.0+] Orchestration/ (Folder)
+    └── keycloak-realm-provisioning (MultiFunction) 🚀
+```
+
+### 🎯 Items Jenkins Utilisés
+
+#### 1. **Folder** - Organisation Hiérarchique
+
+**Usage:**
+- Folder principal `Keycloak` - Conteneur racine de toutes les pipelines
+- Sous-folders par catégorie (`User`, `Group`, `Client`, `Security-Audit`, `Maintenance`)
+
+**Avantages:**
+- ✅ Isolation des pipelines par domaine fonctionnel
+- ✅ Permissions granulaires (contrôle d'accès par folder)
+- ✅ Organisation visuelle claire et intuitive
+- ✅ Namespace distinct (évite conflits de noms)
+- ✅ Facilite navigation et maintenance
+
+#### 2. **Pipeline** - Toutes les Pipelines Individuelles
+
+**Usage:** Type d'item pour les 9 pipelines core v0.2.0
+
+**Jenkins Features exploitées:**
+- ✅ **Parameterized Builds** - Paramètres dynamiques par pipeline
+- ✅ **Choice Parameter** - Dropdowns pour sélection d'actions
+- ✅ **Credentials Binding** - Gestion sécurisée secrets Keycloak
+- ✅ **Build Triggers** - Cron schedules, webhooks (futur)
+- ✅ **Approval Gates** - Input steps pour actions critiques
+- ✅ **Post-Build Actions** - Notifications, archivage, alertes
+
+#### 3. **View** - Organisation Visuelle
+
+**Usage:** 2 views dans le folder Keycloak
+
+##### View "Management" 📊
+Affiche pipelines de gestion opérationnelle:
+- User Management
+- Group Management  
+- Client Management
+- Security & Audit
+- Maintenance
+
+**Configuration:**
+- Type: List View
+- Include regex: `.*management.*|.*audit.*|.*cleanup.*|.*session.*|.*compliance.*`
+
+##### View "Tests" 🧪
+Affiche pipelines de tests:
+- Test-Keycloak-Integration (existant)
+- Futurs tests end-to-end
+
+**Configuration:**
+- Type: List View
+- Include regex: `.*[Tt]est.*`
+
+#### 4. **MultiFunction** - Orchestration Future (v0.3.0+) 🚀
+
+**Usage:** Pipeline d'orchestration complexe multi-étapes
+
+**Exemple Use Case: "Complete Realm Provisioning"**
+
+```groovy
+// Projet MultiFunction avec Build Matrix
+Axes:
+  - Environment: [dev, staging, prod]
+  - Realm: [internal, external]
+
+Build Steps (séquentiels):
+  1. Create Realm
+  2. Configure Email Settings
+  3. Create Groups (appel pipeline Group)
+  4. Create Admin Users (appel pipeline User)
+  5. Create Clients (appel pipeline Client)
+  6. Apply RBAC Rules (appel pipeline RBAC)
+  7. Run Security Audit (appel pipeline Audit)
+
+Post-Build Actions:
+  - Archive realm config JSON
+  - Send email summary
+  - Trigger downstream test job
+```
+
+**Avantages MultiFunction:**
+- ✅ **Build Matrix** - Exécution parallèle multi-environnements
+- ✅ **Étapes du build** - Orchestration séquentielle
+- ✅ **Réutilise code** - Call existing pipelines
+- ✅ **Post-build actions** - Notifications, archivage, triggers
+- ✅ **Matrice de configuration** - Test multiple configurations
+
+### 📊 Bénéfices Architecture
+
+| Aspect | Bénéfice |
+|--------|----------|
+| **Organisation** | Hiérarchie claire par domaine fonctionnel |
+| **Scalabilité** | Facile d'ajouter nouvelles pipelines/folders |
+| **Permissions** | Granularité fine par folder (RBAC Jenkins) |
+| **Views** | Filtrage contextualisé (Management vs Tests) |
+| **Réutilisabilité** | MultiFunction réutilise pipelines existantes |
+| **Maintenance** | Isolation changements, minimal impact |
+| **Navigation** | Structure intuitive, recherche facilitée |
+
+### 🛠️ Implémentation
+
+**Fichiers Groovy DSL à créer:**
+1. `03-create-keycloak-folder-structure.groovy` - Créer folders + views
+2. Adapter `01-create-pipeline-jobs.groovy` - Créer pipelines dans folders
+
+**Ordre d'exécution:**
+1. Créer structure folders (script 03)
+2. Créer pipelines dans folders (script 01 adapté)
+3. Valider organisation + views
 
 ---
 
@@ -91,9 +238,9 @@ Créer un **écosystème de pipelines Jenkins modulaire** pour automatiser la ge
 
 **Jenkins Features à Exploiter:**
 - ✅ **Parameterized Builds**        - Action + group name + members list
-- ✅ **Active Choices Parameter**    - Liste dynamique groupes existants (Groovy script)
+- ✅ **Choice Parameter**            - Dropdown pour sélection groupes existants
 - ✅ **Multi-line String Parameter** - Liste usernames (un par ligne)
-- ✅ **Extended Choice Parameter**   - Sélection multiple rôles
+- ✅ **String Parameter**            - Sélection rôles (comma-separated)
 - ✅ **Approval Gates**              - Confirmation avant DELETE_GROUP
 - ✅ **Conditional Steps**           - Logique selon action choisie
 
