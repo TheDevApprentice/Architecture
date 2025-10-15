@@ -281,7 +281,7 @@ def listUsers(Map config) {
         returnStdout: true
     ).trim()
     
-    def users = readJSON text: response
+    def users = readJSON(text: response)
     
     echo "Found ${users.size()} users"
     
@@ -309,7 +309,7 @@ def getUserId(Map config) {
         returnStdout: true
     ).trim()
     
-    def users = readJSON text: response
+    def users = readJSON(text: response)
     
     if (users.size() == 0) {
         error("User '${username}' not found in realm '${realm}'")
@@ -339,7 +339,7 @@ def getGroupId(Map config) {
         returnStdout: true
     ).trim()
     
-    def groups = readJSON text: response
+    def groups = readJSON(text: response)
     def group = groups.find { it.name == groupName }
     
     if (!group) {

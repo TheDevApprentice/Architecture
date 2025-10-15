@@ -265,7 +265,7 @@ def listClients(Map config) {
         returnStdout: true
     ).trim()
     
-    def clients = readJSON text: response
+    def clients = readJSON(text: response)
     
     // Filter out system clients (starting with realm- or account-)
     def userClients = clients.findAll { 
@@ -314,7 +314,7 @@ def getClient(Map config) {
         returnStdout: true
     ).trim()
     
-    return readJSON text: response
+    return readJSON(text: response)
 }
 
 /**
@@ -353,7 +353,7 @@ def getClientSecret(Map config) {
         returnStdout: true
     ).trim()
     
-    def secretData = readJSON text: response
+    def secretData = readJSON(text: response)
     
     echo "✅ Secret retrieved (will be masked in output)"
     return secretData.value
@@ -395,7 +395,7 @@ def regenerateSecret(Map config) {
         returnStdout: true
     ).trim()
     
-    def secretData = readJSON text: response
+    def secretData = readJSON(text: response)
     
     echo "✅ New secret generated (will be masked in output)"
     return secretData.value
@@ -449,7 +449,7 @@ def getClientUuid(Map config) {
         returnStdout: true
     ).trim()
     
-    def clients = readJSON text: response
+    def clients = readJSON(text: response)
     
     // Should return exactly one client
     return clients?.size() > 0 ? clients[0].id : null
@@ -501,7 +501,7 @@ def getServiceAccountUser(Map config) {
         returnStdout: true
     ).trim()
     
-    return readJSON text: response
+    return readJSON(text: response)
 }
 
 return this

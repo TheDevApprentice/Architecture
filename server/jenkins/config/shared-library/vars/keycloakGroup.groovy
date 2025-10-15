@@ -194,7 +194,7 @@ def listGroups(Map config) {
         returnStdout: true
     ).trim()
     
-    def groups = readJSON text: response
+    def groups = readJSON(text: response)
     
     echo "✅ Found ${groups.size()} groups"
     return groups
@@ -234,7 +234,7 @@ def getGroup(Map config) {
         returnStdout: true
     ).trim()
     
-    return readJSON text: response
+    return readJSON(text: response)
 }
 
 /**
@@ -413,7 +413,7 @@ def listMembers(Map config) {
         returnStdout: true
     ).trim()
     
-    def members = readJSON text: response
+    def members = readJSON(text: response)
     
     echo "✅ Found ${members.size()} members in group '${groupName}'"
     return members
@@ -440,7 +440,7 @@ def getGroupId(Map config) {
         returnStdout: true
     ).trim()
     
-    def groups = readJSON text: response
+    def groups = readJSON(text: response)
     
     // Find exact match (search can return partial matches)
     def group = groups.find { it.name == groupName }
@@ -469,7 +469,7 @@ def getUserId(Map config) {
         returnStdout: true
     ).trim()
     
-    def users = readJSON text: response
+    def users = readJSON(text: response)
     
     return users?.size() > 0 ? users[0].id : null
 }
