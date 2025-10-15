@@ -157,6 +157,72 @@ Automatically assign users to groups based on attributes:
     println "[init] ℹ️  'keycloak-rbac-automation' pipeline already exists"
 }
 
+// ============================================================================
+// 5. Keycloak Client Management Pipeline
+// ============================================================================
+
+def clientManagementJob = keycloakFolder.getItem('keycloak-client-management')
+if (clientManagementJob == null) {
+    println "[init] 🔐 Creating 'keycloak-client-management' pipeline in Keycloak folder..."
+    
+    clientManagementJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-client-management')
+    clientManagementJob.description = '''🔐 Keycloak Client Management Pipeline
+
+CRUD operations for Keycloak clients (OIDC/SAML):
+- CREATE_CLIENT
+- CREATE_FROM_TEMPLATE (web-app, spa, backend-service, mobile-app)
+- UPDATE_CLIENT
+- DELETE_CLIENT
+- LIST_CLIENTS
+- GET_CLIENT
+- GET_CLIENT_SECRET
+- REGENERATE_SECRET
+- ENABLE_CLIENT
+- DISABLE_CLIENT'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-client-management.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    clientManagementJob.setDefinition(flowDefinition)
+    
+    clientManagementJob.save()
+    println "[init] ✅ 'keycloak-client-management' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-client-management' pipeline already exists"
+}
+
+// ============================================================================
+// 6. Keycloak Service Account Management Pipeline
+// ============================================================================
+
+def serviceAccountJob = keycloakFolder.getItem('keycloak-service-account-management')
+if (serviceAccountJob == null) {
+    println "[init] 🤖 Creating 'keycloak-service-account-management' pipeline in Keycloak folder..."
+    
+    serviceAccountJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-service-account-management')
+    serviceAccountJob.description = '''🤖 Keycloak Service Account Management Pipeline
+
+Management of service accounts (M2M) with secret rotation:
+- CREATE_SERVICE_ACCOUNT
+- LIST_SERVICE_ACCOUNTS
+- GET_SERVICE_ACCOUNT
+- DELETE_SERVICE_ACCOUNT
+- ROTATE_SECRET (with health check)
+- GET_SA_TOKEN
+- ENABLE_SA
+- DISABLE_SA'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-service-account-management.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    serviceAccountJob.setDefinition(flowDefinition)
+    
+    serviceAccountJob.save()
+    println "[init] ✅ 'keycloak-service-account-management' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-service-account-management' pipeline already exists"
+}
+
 jenkins.save()
 
 println "=" * 80
@@ -166,5 +232,7 @@ println "[init] 📝 Pipelines created:"
 println "[init]    - keycloak-user-management"
 println "[init]    - keycloak-group-management"
 println "[init]    - keycloak-rbac-automation"
+println "[init]    - keycloak-client-management"
+println "[init]    - keycloak-service-account-management"
 println "[init]    - Test-Keycloak-Integration"
 println "=" * 80
