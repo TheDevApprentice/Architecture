@@ -4,7 +4,7 @@
  * This script runs at Jenkins startup and creates all Keycloak automation pipelines
  * inside the Keycloak folder structure
  * 
- * Prerequisites: 03-create-keycloak-folder-structure.groovy must run first
+ * Prerequisites: 01-create-keycloak-folder-structure.groovy must run first
  */
 
 import jenkins.model.Jenkins
@@ -95,8 +95,76 @@ Test suite for Keycloak API integration:
     println "[init] ℹ️  'Test-Keycloak-Integration' pipeline already exists"
 }
 
+// ============================================================================
+// 3. Keycloak Group Management Pipeline
+// ============================================================================
+
+def groupManagementJob = keycloakFolder.getItem('keycloak-group-management')
+if (groupManagementJob == null) {
+    println "[init] 👥 Creating 'keycloak-group-management' pipeline in Keycloak folder..."
+    
+    groupManagementJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-group-management')
+    groupManagementJob.description = '''👥 Keycloak Group Management Pipeline
+
+CRUD operations for Keycloak groups:
+- CREATE_GROUP
+- UPDATE_GROUP
+- DELETE_GROUP
+- LIST_GROUPS
+- GET_GROUP
+- ADD_MEMBERS
+- REMOVE_MEMBERS
+- LIST_MEMBERS
+- DETECT_ORPHANS'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-group-management.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    groupManagementJob.setDefinition(flowDefinition)
+    
+    groupManagementJob.save()
+    println "[init] ✅ 'keycloak-group-management' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-group-management' pipeline already exists"
+}
+
+// ============================================================================
+// 4. Keycloak RBAC Automation Pipeline
+// ============================================================================
+
+def rbacAutomationJob = keycloakFolder.getItem('keycloak-rbac-automation')
+if (rbacAutomationJob == null) {
+    println "[init] 🔐 Creating 'keycloak-rbac-automation' pipeline in Keycloak folder..."
+    
+    rbacAutomationJob = keycloakFolder.createProject(WorkflowJob.class, 'keycloak-rbac-automation')
+    rbacAutomationJob.description = '''🔐 Keycloak RBAC Automation Pipeline
+
+Automatically assign users to groups based on attributes:
+- APPLY_RBAC - Apply rules to single user
+- SYNC_USER_GROUPS - Sync user groups from attributes
+- SYNC_ALL_USERS - Sync all users in realm
+- VALIDATE_RULES - Validate RBAC mapping rules
+- DRY_RUN - Preview changes without applying'''
+    
+    // Load Jenkinsfile content
+    def jenkinsfileContent = readJenkinsfile('/usr/share/jenkins/ref/pipelines/keycloak-rbac-automation.jenkinsfile')
+    def flowDefinition = new CpsFlowDefinition(jenkinsfileContent, true)
+    rbacAutomationJob.setDefinition(flowDefinition)
+    
+    rbacAutomationJob.save()
+    println "[init] ✅ 'keycloak-rbac-automation' pipeline created successfully"
+} else {
+    println "[init] ℹ️  'keycloak-rbac-automation' pipeline already exists"
+}
+
 jenkins.save()
 
+println "=" * 80
 println "[init] 🎉 Keycloak pipelines creation completed!"
 println "[init] 📁 Location: Keycloak/"
-println "[init] 📝 Pipelines created: keycloak-user-management, Test-Keycloak-Integration"
+println "[init] 📝 Pipelines created:"
+println "[init]    - keycloak-user-management"
+println "[init]    - keycloak-group-management"
+println "[init]    - keycloak-rbac-automation"
+println "[init]    - Test-Keycloak-Integration"
+println "=" * 80

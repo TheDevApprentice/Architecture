@@ -1,0 +1,337 @@
+/**
+ * Keycloak Group Management Pipeline
+ * 
+ * CRUD operations for Keycloak groups, members, and role assignments
+ */
+
+// Load Keycloak library functions
+def keycloakAuth
+def keycloakGroup
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: [
+                'CREATE_GROUP',
+                'UPDATE_GROUP',
+                'DELETE_GROUP',
+                'LIST_GROUPS',
+                'GET_GROUP',
+                'ADD_MEMBERS',
+                'REMOVE_MEMBERS',
+                'LIST_MEMBERS',
+                'DETECT_ORPHANS'
+            ],
+            description: 'Action to perform'
+        )
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm (e.g., internal, master)'
+        )
+        string(
+            name: 'GROUP_NAME',
+            defaultValue: '',
+            description: 'Group name (required for most actions)'
+        )
+        string(
+            name: 'NEW_GROUP_NAME',
+            defaultValue: '',
+            description: 'New group name (for UPDATE_GROUP action)'
+        )
+        string(
+            name: 'PARENT_GROUP',
+            defaultValue: '',
+            description: 'Parent group name (for hierarchical groups)'
+        )
+        text(
+            name: 'USERNAMES',
+            defaultValue: '',
+            description: 'List of usernames (one per line) for ADD_MEMBERS/REMOVE_MEMBERS'
+        )
+        string(
+            name: 'ATTRIBUTES',
+            defaultValue: '{}',
+            description: 'Custom attributes as JSON (e.g., {"department": "IT", "location": "Paris"})'
+        )
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'Preview changes without executing (for destructive actions)'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    // Load library scripts from filesystem
+                    keycloakAuth = load '/var/jenkins_home/shared-library/vars/keycloakAuth.groovy'
+                    keycloakGroup = load '/var/jenkins_home/shared-library/vars/keycloakGroup.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    echo "🔍 Validating parameters..."
+                    
+                    if (!params.REALM) {
+                        error("REALM parameter is required")
+                    }
+                    
+                    // Actions requiring GROUP_NAME
+                    def actionsRequiringGroup = [
+                        'UPDATE_GROUP', 'DELETE_GROUP', 'GET_GROUP',
+                        'ADD_MEMBERS', 'REMOVE_MEMBERS', 'LIST_MEMBERS'
+                    ]
+                    
+                    if (params.ACTION in actionsRequiringGroup && !params.GROUP_NAME) {
+                        error("GROUP_NAME is required for ${params.ACTION}")
+                    }
+                    
+                    if (params.ACTION == 'CREATE_GROUP' && !params.GROUP_NAME) {
+                        error("GROUP_NAME is required for creating a group")
+                    }
+                    
+                    if (params.ACTION in ['ADD_MEMBERS', 'REMOVE_MEMBERS'] && !params.USERNAMES) {
+                        error("USERNAMES list is required for ${params.ACTION}")
+                    }
+                    
+                    echo "✅ Parameters validated successfully"
+                }
+            }
+        }
+        
+        stage('Get Access Token') {
+            steps {
+                script {
+                    echo "🔐 Obtaining Keycloak access token..."
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET
+                    )
+                    echo "✅ Access token obtained"
+                }
+            }
+        }
+        
+        stage('Execute Action') {
+            steps {
+                script {
+                    echo "🚀 Executing action: ${params.ACTION}"
+                    echo "=" * 80
+                    
+                    switch(params.ACTION) {
+                        case 'CREATE_GROUP':
+                            def attributes = params.ATTRIBUTES && params.ATTRIBUTES != '{}' ? 
+                                readJSON(text: params.ATTRIBUTES) : [:]
+                            
+                            def groupId = keycloakGroup.createGroup(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME,
+                                parentGroupName: params.PARENT_GROUP ?: null,
+                                attributes: attributes
+                            )
+                            
+                            echo "✅ Group '${params.GROUP_NAME}' created successfully"
+                            echo "   Group ID: ${groupId}"
+                            if (params.PARENT_GROUP) {
+                                echo "   Parent: ${params.PARENT_GROUP}"
+                            }
+                            break
+                            
+                        case 'UPDATE_GROUP':
+                            def attributes = params.ATTRIBUTES && params.ATTRIBUTES != '{}' ? 
+                                readJSON(text: params.ATTRIBUTES) : null
+                            
+                            keycloakGroup.updateGroup(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME,
+                                newName: params.NEW_GROUP_NAME ?: params.GROUP_NAME,
+                                attributes: attributes
+                            )
+                            
+                            echo "✅ Group '${params.GROUP_NAME}' updated successfully"
+                            if (params.NEW_GROUP_NAME) {
+                                echo "   New name: ${params.NEW_GROUP_NAME}"
+                            }
+                            break
+                            
+                        case 'DELETE_GROUP':
+                            // Approval gate for destructive action
+                            if (!params.DRY_RUN) {
+                                def groupInfo = keycloakGroup.getGroup(
+                                    accessToken: env.ACCESS_TOKEN,
+                                    groupName: params.GROUP_NAME
+                                )
+                                
+                                def members = keycloakGroup.listMembers(
+                                    accessToken: env.ACCESS_TOKEN,
+                                    groupName: params.GROUP_NAME
+                                )
+                                
+                                echo "⚠️  About to DELETE group:"
+                                echo "   Name: ${params.GROUP_NAME}"
+                                echo "   ID: ${groupInfo.id}"
+                                echo "   Members: ${members.size()}"
+                                
+                                try {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        input message: "⚠️  Are you sure you want to DELETE group '${params.GROUP_NAME}' with ${members.size()} member(s)?",
+                                              ok: 'DELETE',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Delete operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                                
+                                keycloakGroup.deleteGroup(
+                                    accessToken: env.ACCESS_TOKEN,
+                                    groupName: params.GROUP_NAME
+                                )
+                                
+                                echo "✅ Group '${params.GROUP_NAME}' deleted successfully"
+                            } else {
+                                echo "🔍 DRY RUN: Would delete group '${params.GROUP_NAME}'"
+                            }
+                            break
+                            
+                        case 'LIST_GROUPS':
+                            def groups = keycloakGroup.listGroups(
+                                accessToken: env.ACCESS_TOKEN
+                            )
+                            
+                            echo "📋 Groups in realm '${params.REALM}':"
+                            echo "=" * 80
+                            groups.each { group ->
+                                echo "  • ${group.name} (ID: ${group.id})"
+                                if (group.subGroups && group.subGroups.size() > 0) {
+                                    group.subGroups.each { subGroup ->
+                                        echo "      ↳ ${subGroup.name} (ID: ${subGroup.id})"
+                                    }
+                                }
+                            }
+                            echo "=" * 80
+                            echo "Total: ${groups.size()} groups"
+                            break
+                            
+                        case 'GET_GROUP':
+                            def group = keycloakGroup.getGroup(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME
+                            )
+                            
+                            echo "📊 Group Details:"
+                            echo "=" * 80
+                            echo "  Name: ${group.name}"
+                            echo "  ID: ${group.id}"
+                            echo "  Path: ${group.path}"
+                            if (group.attributes) {
+                                echo "  Attributes:"
+                                group.attributes.each { key, value ->
+                                    echo "    - ${key}: ${value}"
+                                }
+                            }
+                            if (group.subGroups && group.subGroups.size() > 0) {
+                                echo "  Sub-groups: ${group.subGroups.size()}"
+                            }
+                            echo "=" * 80
+                            break
+                            
+                        case 'ADD_MEMBERS':
+                            def usernames = params.USERNAMES.split('\n').collect { it.trim() }.findAll { it }
+                            
+                            echo "👥 Adding ${usernames.size()} user(s) to group '${params.GROUP_NAME}'..."
+                            
+                            keycloakGroup.addMembers(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME,
+                                usernames: usernames
+                            )
+                            break
+                            
+                        case 'REMOVE_MEMBERS':
+                            def usernames = params.USERNAMES.split('\n').collect { it.trim() }.findAll { it }
+                            
+                            echo "👥 Removing ${usernames.size()} user(s) from group '${params.GROUP_NAME}'..."
+                            
+                            keycloakGroup.removeMembers(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME,
+                                usernames: usernames
+                            )
+                            break
+                            
+                        case 'LIST_MEMBERS':
+                            def members = keycloakGroup.listMembers(
+                                accessToken: env.ACCESS_TOKEN,
+                                groupName: params.GROUP_NAME
+                            )
+                            
+                            echo "👥 Members of group '${params.GROUP_NAME}':"
+                            echo "=" * 80
+                            members.each { user ->
+                                echo "  • ${user.username} (${user.firstName} ${user.lastName})"
+                                echo "      Email: ${user.email}"
+                                echo "      Enabled: ${user.enabled}"
+                            }
+                            echo "=" * 80
+                            echo "Total: ${members.size()} members"
+                            break
+                            
+                        case 'DETECT_ORPHANS':
+                            def orphanGroups = keycloakGroup.detectOrphanGroups(
+                                accessToken: env.ACCESS_TOKEN
+                            )
+                            
+                            echo "🔍 Orphan Groups (groups with no members):"
+                            echo "=" * 80
+                            if (orphanGroups.size() > 0) {
+                                orphanGroups.each { groupName ->
+                                    echo "  • ${groupName}"
+                                }
+                            } else {
+                                echo "  ✅ No orphan groups found"
+                            }
+                            echo "=" * 80
+                            echo "Total: ${orphanGroups.size()} orphan groups"
+                            break
+                            
+                        default:
+                            error("Unknown action: ${params.ACTION}")
+                    }
+                    
+                    echo "=" * 80
+                    echo "✅ Action '${params.ACTION}' completed successfully"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+        always {
+            // Clean sensitive data
+            env.ACCESS_TOKEN = null
+        }
+    }
+}
