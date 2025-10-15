@@ -61,7 +61,7 @@ if (managementView == null) {
     managementView.description = "📊 Keycloak Management Pipelines (User, Group, Client, Security & Audit, Maintenance)"
     
     // Include regex pattern for management pipelines
-    managementView.includeRegex = ".*(management|audit|cleanup|session|compliance|rbac|service-account).*"
+    managementView.includeRegex = ".*([Mm]anagement|[Aa]udit|[Cc]leanup|[Ss]ession|[Cc]ompliance|[Rr]bac|[Ss]ervice-account).*"
     
     // Configure columns
     managementView.columns.clear()
