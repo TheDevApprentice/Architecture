@@ -266,14 +266,23 @@ def listClients(Map config) {
     ).trim()
     
     def clients = readJSON(text: response)
-    
+
+    // Ensure we always have a list of maps
+    if (clients instanceof Map) {
+        clients = clients.collect { entry ->
+            entry.value
+        }
+    }
+
     // Filter out system clients (starting with realm- or account-)
-    def userClients = clients.findAll { 
-        !it.clientId.startsWith('realm-') && 
-        !it.clientId.startsWith('account') &&
-        !it.clientId.startsWith('admin-') &&
-        !it.clientId.startsWith('broker') &&
-        !it.clientId.startsWith('security-')
+    def userClients = clients.findAll { client ->
+        def clientId = client?.clientId
+        clientId &&
+            !clientId.startsWith('realm-') &&
+            !clientId.startsWith('account') &&
+            !clientId.startsWith('admin-') &&
+            !clientId.startsWith('broker') &&
+            !clientId.startsWith('security-')
     }
     
     echo "✅ Found ${userClients.size()} user clients (${clients.size()} total)"

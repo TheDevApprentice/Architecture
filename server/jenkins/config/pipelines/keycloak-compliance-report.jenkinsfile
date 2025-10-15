@@ -12,6 +12,12 @@ def keycloakGroup
 def keycloakClient
 def keycloakAudit
 
+def allUsers = []
+def allGroups = []
+def allClients = []
+def serviceAccounts = []
+def reportData = [:]
+
 pipeline {
     agent any
     
@@ -106,29 +112,25 @@ pipeline {
                     echo "📊 Gathering compliance data..."
                     
                     // Get all users
-                    def users = keycloakUser.listUsers(
+                    allUsers = keycloakUser.listUsers(
                         accessToken: env.ACCESS_TOKEN
                     )
-                    env.ALL_USERS = users
-                    echo "  ✅ Users: ${users.size()}"
-                    
+                    echo "  ✅ Users: ${allUsers.size()}"
+
                     // Get all groups
-                    def groups = keycloakGroup.listGroups(
+                    allGroups = keycloakGroup.listGroups(
                         accessToken: env.ACCESS_TOKEN
                     )
-                    env.ALL_GROUPS = groups
-                    echo "  ✅ Groups: ${groups.size()}"
-                    
+                    echo "  ✅ Groups: ${allGroups.size()}"
+
                     // Get all clients
-                    def clients = keycloakClient.listClients(
+                    allClients = keycloakClient.listClients(
                         accessToken: env.ACCESS_TOKEN
                     )
-                    env.ALL_CLIENTS = clients
-                    echo "  ✅ Clients: ${clients.size()}"
-                    
+                    echo "  ✅ Clients: ${allClients.size()}"
+
                     // Get service accounts
-                    def serviceAccounts = clients.findAll { it.serviceAccountsEnabled }
-                    env.SERVICE_ACCOUNTS = serviceAccounts
+                    serviceAccounts = allClients.findAll { it["serviceAccountsEnabled"] }
                     echo "  ✅ Service Accounts: ${serviceAccounts.size()}"
                     
                     echo "✅ Data gathering completed"
@@ -142,31 +144,31 @@ pipeline {
                     echo "📝 Generating ${params.REPORT_TYPE} report..."
                     echo "=" * 80
                     
-                    def reportData = [:]
+                    reportData = [:]
                     
                     switch(params.REPORT_TYPE) {
                         case 'FULL_COMPLIANCE':
-                            reportData = generateFullComplianceReport()
+                            reportData = generateFullComplianceReport(allUsers, allGroups, allClients)
                             break
                             
                         case 'ACCESS_REVIEW':
-                            reportData = generateAccessReviewReport()
+                            reportData = generateAccessReviewReport(allUsers, allGroups, allClients)
                             break
                             
                         case 'PRIVILEGED_ACCOUNTS':
-                            reportData = generatePrivilegedAccountsReport()
+                            reportData = generatePrivilegedAccountsReport(allUsers, serviceAccounts)
                             break
                             
                         case 'PASSWORD_POLICY':
-                            reportData = generatePasswordPolicyReport()
+                            reportData = generatePasswordPolicyReport(allUsers)
                             break
                             
                         case 'CLIENT_SECRETS_AUDIT':
-                            reportData = generateClientSecretsAudit()
+                            reportData = generateClientSecretsAudit(allClients)
                             break
                             
                         case 'MFA_ADOPTION':
-                            reportData = generateMFAAdoptionReport()
+                            reportData = generateMFAAdoptionReport(allUsers)
                             break
                             
                         default:
@@ -211,8 +213,6 @@ pipeline {
                     echo "🏢 Realm: ${params.REALM}"
                     echo "📋 Report Type: ${params.REPORT_TYPE}"
                     echo ""
-                    
-                    def reportData = env.REPORT_DATA
                     
                     reportData.summary.each { key, value ->
                         echo "  • ${key}: ${value}"
@@ -267,10 +267,7 @@ pipeline {
 /**
  * Generate full compliance report
  */
-def generateFullComplianceReport() {
-    def users = env.ALL_USERS
-    def groups = env.ALL_GROUPS
-    def clients = env.ALL_CLIENTS
+def generateFullComplianceReport(users, groups, clients) {
     
     def unverifiedEmails = users.findAll { !it.emailVerified && it.email }
     def disabledUsers = users.findAll { !it.enabled }
@@ -301,10 +298,7 @@ def generateFullComplianceReport() {
 /**
  * Generate access review report
  */
-def generateAccessReviewReport() {
-    def users = env.ALL_USERS
-    def groups = env.ALL_GROUPS
-    def clients = env.ALL_CLIENTS
+def generateAccessReviewReport(users, groups, clients) {
     
     // Build user-group mapping
     def userGroupMap = [:]
@@ -333,9 +327,7 @@ def generateAccessReviewReport() {
 /**
  * Generate privileged accounts report
  */
-def generatePrivilegedAccountsReport() {
-    def users = env.ALL_USERS
-    def serviceAccounts = env.SERVICE_ACCOUNTS
+def generatePrivilegedAccountsReport(users, serviceAccountsLocal) {
     
     // Filter admin users (simplified - would need role checking in real implementation)
     def adminUsers = users.findAll { 
@@ -348,12 +340,12 @@ def generatePrivilegedAccountsReport() {
         realm: params.REALM,
         summary: [
             'Potential Admin Users': adminUsers.size(),
-            'Service Accounts': serviceAccounts.size(),
-            'Total Privileged': adminUsers.size() + serviceAccounts.size()
+            'Service Accounts': serviceAccountsLocal.size(),
+            'Total Privileged': adminUsers.size() + serviceAccountsLocal.size()
         ],
         details: [
             adminUsers: adminUsers.collect { [username: it.username, email: it.email, enabled: it.enabled] },
-            serviceAccounts: serviceAccounts.collect { [clientId: it.clientId, enabled: it.enabled] }
+            serviceAccounts: serviceAccountsLocal.collect { [clientId: it.clientId, enabled: it.enabled] }
         ]
     ]
     
@@ -363,8 +355,7 @@ def generatePrivilegedAccountsReport() {
 /**
  * Generate password policy compliance report
  */
-def generatePasswordPolicyReport() {
-    def users = env.ALL_USERS
+def generatePasswordPolicyReport(users) {
     
     def usersRequiringAction = users.findAll { 
         it.requiredActions && it.requiredActions.size() > 0 
@@ -392,8 +383,7 @@ def generatePasswordPolicyReport() {
 /**
  * Generate client secrets audit
  */
-def generateClientSecretsAudit() {
-    def clients = env.ALL_CLIENTS
+def generateClientSecretsAudit(clients) {
     def confidentialClients = clients.findAll { !it.publicClient }
     
     def report = [
@@ -418,8 +408,7 @@ def generateClientSecretsAudit() {
 /**
  * Generate MFA adoption report
  */
-def generateMFAAdoptionReport() {
-    def users = env.ALL_USERS
+def generateMFAAdoptionReport(users) {
     
     // Users with CONFIGURE_TOTP required action need to set up MFA
     def usersWithoutMFA = users.findAll { 
