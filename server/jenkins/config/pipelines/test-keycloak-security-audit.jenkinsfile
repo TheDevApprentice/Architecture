@@ -1,0 +1,356 @@
+/**
+ * Keycloak Security Audit Integration Test Pipeline
+ * 
+ * Tests security audit functions: inactive users, unverified emails, report generation
+ */
+
+def keycloakAuth
+def keycloakAudit
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REALM',
+            choices: ['internal'],
+            description: 'Keycloak realm to test'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+    }
+    
+    stages {
+        stage('Load Libraries') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
+                    echo "✅ Libraries loaded"
+                }
+            }
+        }
+        
+        stage('🔐 Authenticate') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('📊 Test 1: Gather User Statistics') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Gathering user statistics..."
+                    echo "=" * 60
+                    
+                    try {
+                        def stats = keycloakAudit.getUserStatistics(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Statistics gathered successfully"
+                        echo "\n📊 User Statistics:"
+                        echo "   Total users: ${stats.totalUsers}"
+                        echo "   Enabled users: ${stats.enabledUsers}"
+                        echo "   Disabled users: ${stats.disabledUsers}"
+                        echo "   Verified emails: ${stats.verifiedEmails}"
+                        echo "   Unverified emails: ${stats.unverifiedEmails}"
+                        
+                        env.TOTAL_USERS = stats.totalUsers.toString()
+                    } catch (Exception e) {
+                        error("❌ Failed to gather statistics: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('⚠️ Test 2: Find Inactive Users') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Finding inactive users..."
+                    echo "=" * 60
+                    
+                    try {
+                        def inactiveUsers = keycloakAudit.findInactiveUsers(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            inactiveDays: 90
+                        )
+                        
+                        echo "✅ Inactive users analysis completed"
+                        echo "   Users inactive for 90+ days: ${inactiveUsers.size()}"
+                        
+                        if (inactiveUsers.size() > 0) {
+                            echo "\n   Sample inactive users:"
+                            inactiveUsers.take(5).each { user ->
+                                echo "   - ${user.username} (Last login: ${user.lastLogin ?: 'Never'})"
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to find inactive users: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📧 Test 3: Find Unverified Emails') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 3: Finding users with unverified emails..."
+                    echo "=" * 60
+                    
+                    try {
+                        def unverifiedUsers = keycloakAudit.findUnverifiedEmails(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Unverified emails analysis completed"
+                        echo "   Users with unverified emails: ${unverifiedUsers.size()}"
+                        
+                        if (unverifiedUsers.size() > 0) {
+                            echo "\n   Sample users:"
+                            unverifiedUsers.take(5).each { user ->
+                                echo "   - ${user.username} (${user.email})"
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to find unverified emails: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Test 4: Check Password Policies') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 4: Checking password policies..."
+                    echo "=" * 60
+                    
+                    try {
+                        def policies = keycloakAudit.checkPasswordPolicies(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Password policies retrieved"
+                        echo "\n🔐 Password Policy Configuration:"
+                        echo "   Minimum length: ${policies.minLength ?: 'Not configured'}"
+                        echo "   Require digits: ${policies.requireDigits ?: 'No'}"
+                        echo "   Require lowercase: ${policies.requireLowercase ?: 'No'}"
+                        echo "   Require uppercase: ${policies.requireUppercase ?: 'No'}"
+                        echo "   Require special chars: ${policies.requireSpecial ?: 'No'}"
+                        echo "   Password history: ${policies.historyCount ?: '0'}"
+                    } catch (Exception e) {
+                        error("❌ Failed to check password policies: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📝 Test 5: Generate Security Report (JSON)') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 5: Generating JSON security report..."
+                    echo "=" * 60
+                    
+                    try {
+                        def jsonReport = keycloakAudit.generateSecurityReport(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            format: 'json',
+                            inactiveDaysThreshold: 90
+                        )
+                        
+                        // Save report
+                        writeFile file: "security-report-${BUILD_NUMBER}.json", text: jsonReport
+                        
+                        echo "✅ JSON report generated"
+                        echo "   File: security-report-${BUILD_NUMBER}.json"
+                        
+                        // Archive the report
+                        archiveArtifacts artifacts: "security-report-${BUILD_NUMBER}.json", fingerprint: true
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to generate JSON report: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📊 Test 6: Generate Security Report (HTML)') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 6: Generating HTML security report..."
+                    echo "=" * 60
+                    
+                    try {
+                        def htmlReport = keycloakAudit.generateSecurityReport(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            format: 'html',
+                            inactiveDaysThreshold: 90,
+                            inactiveUsersThreshold: 50,
+                            unverifiedEmailThreshold: 20
+                        )
+                        
+                        // Save report
+                        writeFile file: "security-report-${BUILD_NUMBER}.html", text: htmlReport
+                        
+                        echo "✅ HTML report generated"
+                        echo "   File: security-report-${BUILD_NUMBER}.html"
+                        
+                        // Publish HTML report
+                        publishHTML(target: [
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: '.',
+                            reportFiles: "security-report-${BUILD_NUMBER}.html",
+                            reportName: 'Security Audit Report'
+                        ])
+                        
+                        echo "✅ Report published to Jenkins"
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to generate HTML report: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🎯 Test 7: Calculate Security Score') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 7: Calculating security score..."
+                    echo "=" * 60
+                    
+                    try {
+                        def score = keycloakAudit.calculateSecurityScore(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            inactiveDaysThreshold: 90
+                        )
+                        
+                        echo "✅ Security score calculated"
+                        echo "\n🎯 Security Score: ${score.totalScore}/100"
+                        echo "\n   Breakdown:"
+                        echo "   - Active users score: ${score.activeUsersScore}/30"
+                        echo "   - Email verification score: ${score.emailVerificationScore}/20"
+                        echo "   - Password policy score: ${score.passwordPolicyScore}/30"
+                        echo "   - MFA adoption score: ${score.mfaScore}/20"
+                        
+                        def rating = score.totalScore >= 80 ? "🟢 Excellent" : 
+                                    score.totalScore >= 60 ? "🟡 Good" :
+                                    score.totalScore >= 40 ? "🟠 Fair" : "🔴 Poor"
+                        
+                        echo "\n   Overall Rating: ${rating}"
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to calculate score: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔍 Test 8: Find Security Issues') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 8: Finding security issues..."
+                    echo "=" * 60
+                    
+                    try {
+                        def issues = keycloakAudit.findSecurityIssues(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            inactiveDaysThreshold: 90
+                        )
+                        
+                        echo "✅ Security issues identified"
+                        echo "\n⚠️ Security Issues Found: ${issues.size()}"
+                        
+                        if (issues.size() > 0) {
+                            issues.each { issue ->
+                                def severity = issue.severity == 'HIGH' ? '🔴' : 
+                                             issue.severity == 'MEDIUM' ? '🟠' : '🟡'
+                                echo "\n   ${severity} ${issue.title}"
+                                echo "      Category: ${issue.category}"
+                                echo "      Impact: ${issue.description}"
+                                echo "      Affected: ${issue.count} ${issue.type}"
+                            }
+                        } else {
+                            echo "\n✅ No critical security issues found!"
+                        }
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to find security issues: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "\n" + "=" * 60
+            echo "✅ ALL TESTS PASSED"
+            echo "=" * 60
+            echo "\nSecurity Audit Integration Tests Summary:"
+            echo "✅ Gather user statistics"
+            echo "✅ Find inactive users"
+            echo "✅ Find unverified emails"
+            echo "✅ Check password policies"
+            echo "✅ Generate JSON report"
+            echo "✅ Generate HTML report"
+            echo "✅ Calculate security score"
+            echo "✅ Find security issues"
+            echo "\n🎉 Keycloak Security Audit is fully functional!"
+            echo "\n📊 Reports available:"
+            echo "   - JSON: security-report-${BUILD_NUMBER}.json"
+            echo "   - HTML: Published in Jenkins"
+        }
+        failure {
+            echo "\n" + "=" * 60
+            echo "❌ TESTS FAILED"
+            echo "=" * 60
+            echo "\n⚠️  Check the logs above for details"
+        }
+        always {
+            echo "\nTest completed at: ${new Date()}"
+        }
+    }
+}
