@@ -361,13 +361,15 @@ pipeline {
             echo "\n⚠️  Check the logs above for details"
         }
         always {
-            echo "\nTest completed at: ${new Date()}"
+            script {
+                echo "\nTest completed at: ${new Date()}"
 
-            // Clean sensitive data
-            env.ACCESS_TOKEN = null
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
 
-            parameters.each { param ->
-                param.value = null
+                parameters.each { param ->
+                    param.value = null
+                }
             }
         }
     }
