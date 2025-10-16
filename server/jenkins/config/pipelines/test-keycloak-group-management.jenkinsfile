@@ -155,7 +155,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_GROUP_ID
+                            groupName: env.TEST_GROUP
                         )
                         
                         echo "✅ Group details retrieved"
@@ -177,12 +177,12 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        env.TEST_SUBGROUP_ID = keycloakGroup.createSubgroup(
+                        env.TEST_SUBGROUP_ID = keycloakGroup.createGroup(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            parentGroupId: env.TEST_GROUP_ID,
-                            subgroupName: env.TEST_SUBGROUP
+                            groupName: env.TEST_SUBGROUP,
+                            parentGroupName: env.TEST_GROUP
                         )
                         
                         echo "✅ Subgroup created successfully"
@@ -219,12 +219,12 @@ pipeline {
                         echo "✅ Test user created: ${env.TEST_USERNAME}"
                         
                         // Add user to group
-                        keycloakGroup.addMemberToGroup(
+                        keycloakGroup.addMembers(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_GROUP_ID,
-                            userId: env.TEST_USER_ID
+                            groupName: env.TEST_GROUP,
+                            usernames: [env.TEST_USERNAME]
                         )
                         
                         echo "✅ User added to group successfully"
@@ -245,11 +245,11 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        def members = keycloakGroup.listGroupMembers(
+                        def members = keycloakGroup.listMembers(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_GROUP_ID
+                            groupName: env.TEST_GROUP
                         )
                         
                         echo "✅ Members listed successfully"
@@ -277,7 +277,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_GROUP_ID,
+                            groupName: env.TEST_GROUP,
                             attributes: [
                                 department: ['Engineering'],
                                 location: ['Test'],
@@ -307,16 +307,16 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            userId: env.TEST_USER_ID
+                            username: env.TEST_USERNAME
                         )
                         echo "✅ Test user deleted"
                         
-                        // Delete subgroup
+                        // Delete subgroup first (to test subgroup deletion capability)
                         keycloakGroup.deleteGroup(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_SUBGROUP_ID
+                            groupName: env.TEST_SUBGROUP
                         )
                         echo "✅ Subgroup deleted"
                         
@@ -325,7 +325,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            groupId: env.TEST_GROUP_ID
+                            groupName: env.TEST_GROUP
                         )
                         echo "✅ Test group deleted"
                         
@@ -366,10 +366,9 @@ pipeline {
 
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
-
-                parameters.each { param ->
-                    param.value = null
-                }
+                env.TEST_GROUP_ID = null
+                env.TEST_SUBGROUP_ID = null
+                env.TEST_USER_ID = null
             }
         }
     }

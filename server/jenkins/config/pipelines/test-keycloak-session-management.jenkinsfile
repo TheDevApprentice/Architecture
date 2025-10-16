@@ -6,6 +6,7 @@
 
 def keycloakAuth
 def keycloakSession
+def keycloakAudit
 def keycloakUser
 
 pipeline {
@@ -32,6 +33,7 @@ pipeline {
                 script {
                     keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
                     keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
                     keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
                     echo "✅ Libraries loaded"
                 }
@@ -98,7 +100,7 @@ pipeline {
                             realm: params.REALM,
                             username: env.TEST_USERNAME,
                             email: "${env.TEST_USERNAME}@test.local",
-                            password: "Test123!",
+                            password: "changeMe123!",
                             enabled: true,
                             emailVerified: true
                         )
@@ -121,7 +123,7 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        def stats = keycloakSession.getSessionStatistics(
+                        def stats = keycloakAudit.getSessionStatistics(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM
@@ -169,7 +171,7 @@ pipeline {
                                 echo "     User: ${session.username}"
                                 echo "     Started: ${session.start}"
                                 echo "     IP: ${session.ipAddress}"
-                                echo "     Clients: ${session.clients?.join(', ')}"
+                                // echo "     Clients: ${session.clients?.join(', ')}"
                                 echo ""
                             }
                         }
@@ -238,7 +240,7 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        def anomalies = keycloakSession.detectAnomalies(
+                        def anomalies = keycloakAudit.detectAnomalies(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
@@ -337,7 +339,7 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        def report = keycloakSession.generateSessionReport(
+                        def report = keycloakAudit.generateSessionReport(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
@@ -423,9 +425,8 @@ pipeline {
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
 
-                parameters.each { param ->
-                    param.value = null
-                }
+                env.TEST_USER_ID = null
+                env.TEST_USERNAME = null
             }
         }
     }

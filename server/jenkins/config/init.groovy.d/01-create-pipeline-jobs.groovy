@@ -480,27 +480,7 @@ pipelineJob('Keycloak/Test-Keycloak-Client-Management') {
     }
 }
 
-// 2c. Test Keycloak Security Audit
-pipelineJob('Keycloak/Test-Keycloak-Security-Audit') {
-    description('Integration tests for security audit functions')
-    
-    parameters {
-        choice {
-            name('REALM')
-            choices(['internal'])
-            description('Keycloak realm to test')
-        }
-    }
-    
-    definition {
-        cps {
-            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-security-audit.jenkinsfile'))
-            sandbox(true)
-        }
-    }
-}
-
-// 2d. Test Keycloak Session Management
+// 2c. Test Keycloak Session Management
 pipelineJob('Keycloak/Test-Keycloak-Session-Management') {
     description('Integration tests for session management')
     
