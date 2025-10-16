@@ -22,6 +22,8 @@ folder('Keycloak') {
     description('🔐 Keycloak Management & Automation Pipelines')
 }
 
+// Pipelines
+
 // 1. Keycloak User Management Pipeline
 pipelineJob('Keycloak/Keycloak-User-Management') {
     description('Interactive pipeline for Keycloak user management (create, update, delete users)')
@@ -106,29 +108,7 @@ pipelineJob('Keycloak/Keycloak-User-Management') {
     }
 }
 
-// 2. Test Keycloak Integration Pipeline
-pipelineJob('Keycloak/Test-Keycloak-Integration') {
-    description('Test suite for Keycloak API integration')
-    
-    parameters {
-        choice {
-            name('REALM')
-            choices([
-                'internal'
-            ])
-            description('Keycloak realm to test')
-        }
-    }
-    
-    definition {
-        cps {
-            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-integration.jenkinsfile'))
-            sandbox(true)
-        }
-    }
-}
-
-// 3. Keycloak Group Management Pipeline
+// 2. Keycloak Group Management Pipeline
 pipelineJob('Keycloak/Keycloak-Group-Management') {
     description('CRUD operations for Keycloak groups, members, and role assignments')
     
@@ -198,67 +178,7 @@ pipelineJob('Keycloak/Keycloak-Group-Management') {
     }
 }
 
-// 4. Keycloak RBAC Automation Pipeline
-pipelineJob('Keycloak/Keycloak-RBAC-Automation') {
-    description('Automatically assigns users to groups based on their attributes')
-    
-    parameters {
-        choice {
-            name('ACTION')
-            choices([
-                'APPLY_RBAC',
-                'SYNC_USER_GROUPS',
-                'SYNC_ALL_USERS',
-                'VALIDATE_RULES',
-                'DRY_RUN'
-            ])
-            description('Action to perform')
-        }
-        string {
-            name('REALM')
-            defaultValue('internal')
-            description('Keycloak realm')
-            trim(true)
-        }
-        string {
-            name('USERNAME')
-            defaultValue('')
-            description('Username (for APPLY_RBAC or SYNC_USER_GROUPS)')
-            trim(true)
-        }
-        text {
-            name('USERNAMES')
-            defaultValue('')
-            description('List of usernames (one per line) for batch operations')
-        }
-        string {
-            name('DEPARTMENT')
-            defaultValue('')
-            description('Department attribute (e.g., IT, Engineering, Finance)')
-            trim(true)
-        }
-        string {
-            name('ROLE')
-            defaultValue('')
-            description('Role attribute (e.g., developer, admin, manager)')
-            trim(true)
-        }
-        booleanParam {
-            name('REMOVE_UNMATCHED')
-            defaultValue(false)
-            description('Remove user from groups that do not match rules')
-        }
-    }
-    
-    definition {
-        cps {
-            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/keycloak-rbac-automation.jenkinsfile'))
-            sandbox(true)
-        }
-    }
-}
-
-// 5. Keycloak Client Management Pipeline
+// 3. Keycloak Client Management Pipeline
 pipelineJob('Keycloak/Keycloak-Client-Management') {
     description('CRUD operations for Keycloak clients (OIDC/SAML applications)')
     
@@ -348,64 +268,7 @@ pipelineJob('Keycloak/Keycloak-Client-Management') {
     }
 }
 
-// 6. Keycloak Service Account Management Pipeline
-pipelineJob('Keycloak/Keycloak-Service-Account-Management') {
-    description('Management of service accounts (M2M clients) with secret rotation')
-    
-    parameters {
-        choice {
-            name('ACTION')
-            choices([
-                'CREATE_SERVICE_ACCOUNT',
-                'LIST_SERVICE_ACCOUNTS',
-                'GET_SERVICE_ACCOUNT',
-                'DELETE_SERVICE_ACCOUNT',
-                'ROTATE_SECRET',
-                'GET_SA_TOKEN',
-                'ENABLE_SA',
-                'DISABLE_SA'
-            ])
-            description('Action to perform')
-        }
-        string {
-            name('REALM')
-            defaultValue('internal')
-            description('Keycloak realm')
-            trim(true)
-        }
-        string {
-            name('CLIENT_ID')
-            defaultValue('')
-            description('Service account client ID (e.g., sa-jenkins-automation)')
-            trim(true)
-        }
-        string {
-            name('DESCRIPTION')
-            defaultValue('')
-            description('Service account description')
-            trim(true)
-        }
-        booleanParam {
-            name('AUTO_ROTATE')
-            defaultValue(false)
-            description('Automatically rotate secret without approval')
-        }
-        booleanParam {
-            name('DRY_RUN')
-            defaultValue(false)
-            description('Preview changes without executing')
-        }
-    }
-    
-    definition {
-        cps {
-            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/keycloak-service-account-management.jenkinsfile'))
-            sandbox(true)
-        }
-    }
-}
-
-// 7. Keycloak Security Audit Pipeline
+// 4. Keycloak Security Audit Pipeline
 pipelineJob('Keycloak/Keycloak-Security-Audit') {
     description('Automated security audit with detailed reporting')
     
@@ -454,7 +317,7 @@ pipelineJob('Keycloak/Keycloak-Security-Audit') {
     }
 }
 
-// 8. Keycloak Session Management Pipeline
+// 5. Keycloak Session Management Pipeline
 pipelineJob('Keycloak/Keycloak-Session-Management') {
     description('Management of active user sessions with emergency revocation capabilities')
     
@@ -504,7 +367,7 @@ pipelineJob('Keycloak/Keycloak-Session-Management') {
     }
 }
 
-// 9. Keycloak Compliance Report Pipeline
+// 6. Keycloak Compliance Report Pipeline
 pipelineJob('Keycloak/Keycloak-Compliance-Report') {
     description('Generate compliance reports (GDPR, access review, privileged accounts, etc.)')
     
@@ -552,6 +415,111 @@ pipelineJob('Keycloak/Keycloak-Compliance-Report') {
         }
     }
 }
+
+// Tests
+
+// 2. Test Keycloak Integration Pipeline
+pipelineJob('Keycloak/Test-Keycloak-User-Management') {
+    description('Test suite for Keycloak API integration')
+    
+    parameters {
+        choice {
+            name('REALM')
+            choices([
+                'internal'
+            ])
+            description('Keycloak realm to test')
+        }
+    }
+    
+    definition {
+        cps {
+            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-user-management.jenkinsfile'))
+            sandbox(true)
+        }
+    }
+}
+
+// 2a. Test Keycloak Group Management
+pipelineJob('Keycloak/Test-Keycloak-Group-Management') {
+    description('Integration tests for group management operations')
+    
+    parameters {
+        choice {
+            name('REALM')
+            choices(['internal'])
+            description('Keycloak realm to test')
+        }
+    }
+    
+    definition {
+        cps {
+            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-group-management.jenkinsfile'))
+            sandbox(true)
+        }
+    }
+}
+
+// 2b. Test Keycloak Client Management
+pipelineJob('Keycloak/Test-Keycloak-Client-Management') {
+    description('Integration tests for client management operations')
+    
+    parameters {
+        choice {
+            name('REALM')
+            choices(['internal'])
+            description('Keycloak realm to test')
+        }
+    }
+    
+    definition {
+        cps {
+            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-client-management.jenkinsfile'))
+            sandbox(true)
+        }
+    }
+}
+
+// 2c. Test Keycloak Security Audit
+pipelineJob('Keycloak/Test-Keycloak-Security-Audit') {
+    description('Integration tests for security audit functions')
+    
+    parameters {
+        choice {
+            name('REALM')
+            choices(['internal'])
+            description('Keycloak realm to test')
+        }
+    }
+    
+    definition {
+        cps {
+            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-security-audit.jenkinsfile'))
+            sandbox(true)
+        }
+    }
+}
+
+// 2d. Test Keycloak Session Management
+pipelineJob('Keycloak/Test-Keycloak-Session-Management') {
+    description('Integration tests for session management')
+    
+    parameters {
+        choice {
+            name('REALM')
+            choices(['internal'])
+            description('Keycloak realm to test')
+        }
+    }
+    
+    definition {
+        cps {
+            script(readFileFromWorkspace('/usr/share/jenkins/ref/pipelines/test-keycloak-session-management.jenkinsfile'))
+            sandbox(true)
+        }
+    }
+}
+
 '''
 
 try {
