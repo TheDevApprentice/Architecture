@@ -420,7 +420,7 @@ def listMembers(Map config) {
 }
 
 /**
- * Get group ID by name
+ * Get group ID by name (searches recursively through group hierarchy)
  * @param config Map with accessToken and groupName
  * @return Group ID or null if not found
  */
@@ -430,6 +430,7 @@ def getGroupId(Map config) {
     def realm = env.KC_REALM
     def groupName = config.groupName
     
+    // First try simple search for top-level groups
     def searchUrl = "http://${keycloakUrl}/admin/realms/${realm}/groups?search=${URLEncoder.encode(groupName, 'UTF-8')}"
     
     def response = sh(
@@ -442,10 +443,35 @@ def getGroupId(Map config) {
     
     def groups = readJSON(text: response)
     
-    // Find exact match (search can return partial matches)
-    def group = groups.find { it.name == groupName }
+    // Recursively search through group hierarchy
+    def foundId = searchGroupRecursive(groups, groupName)
     
-    return group?.id
+    return foundId
+}
+
+/**
+ * Recursively search for a group by name in the group hierarchy
+ * @param groups List of groups to search
+ * @param targetName Name of the group to find
+ * @return Group ID or null if not found
+ */
+private def searchGroupRecursive(groups, targetName) {
+    for (group in groups) {
+        // Check if this group matches
+        if (group.name == targetName) {
+            return group.id
+        }
+        
+        // Check subgroups recursively
+        if (group.subGroups && group.subGroups.size() > 0) {
+            def foundInSubgroups = searchGroupRecursive(group.subGroups, targetName)
+            if (foundInSubgroups) {
+                return foundInSubgroups
+            }
+        }
+    }
+    
+    return null
 }
 
 /**
