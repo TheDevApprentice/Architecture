@@ -61,8 +61,8 @@ if (managementView == null) {
     managementView.description = "📊 Keycloak Management Pipelines (User, Group, Client, Security & Audit, Maintenance)"
     
     // Include regex pattern for management pipelines
-    managementView.includeRegex = ".*([Mm]anagement|[Aa]udit|[Cc]leanup|[Ss]ession|[Cc]ompliance|[Rr]bac|[Ss]ervice-account).*"
-    
+    managementView.includeRegex = '^(?!Test-)(?!.*[Aa]udit)(?!.*[Rr]eport).*(?:[Mm]anagement|[Cc]leanup|[Ss]ession|[Rr]bac|[Ss]ervice-account).*'
+
     // Configure columns
     managementView.columns.clear()
     managementView.columns.add(new StatusColumn())
@@ -84,7 +84,41 @@ if (managementView == null) {
 }
 
 // ============================================================================
-// 3. Create "Tests" View in Keycloak folder
+// 3. Create "Reports" View in Keycloak folder
+// ============================================================================
+
+def reportsView = keycloakFolder.getView("Reports")
+if (reportsView == null) {
+    println "[init] 📊 Creating 'Reports' view in Keycloak folder..."
+    println "=" * 80
+    reportsView = new ListView("Reports", keycloakFolder)
+    reportsView.description = "📊 Keycloak Reports (Compliance, Audit, Security, etc.)"
+    
+    // Include regex pattern for reports
+    reportsView.includeRegex = '^(?!Test-).*(?:[Rr]eport|[Aa]udit).*'
+    
+    // Configure columns
+    reportsView.columns.clear()
+    reportsView.columns.add(new StatusColumn())
+    reportsView.columns.add(new WeatherColumn())
+    reportsView.columns.add(new JobColumn())
+    reportsView.columns.add(new LastSuccessColumn())
+    reportsView.columns.add(new LastFailureColumn())
+    reportsView.columns.add(new LastDurationColumn())
+    reportsView.columns.add(new BuildButtonColumn())
+    
+    keycloakFolder.addView(reportsView)
+    keycloakFolder.save()
+    
+    println "[init] ✅ 'Reports' view created successfully"
+    println "=" * 80
+} else {
+    println "[init] ℹ️  'Tests' view already exists"
+    println "=" * 80
+}
+
+// ============================================================================
+// 4. Create "Tests" View in Keycloak folder
 // ============================================================================
 
 def testsView = keycloakFolder.getView("Tests")
