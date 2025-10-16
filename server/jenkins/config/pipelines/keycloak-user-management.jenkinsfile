@@ -270,19 +270,6 @@ pipeline {
                 }
             }
         }
-        
-        stage('Test Connection') {
-            when {
-                expression { params.ACTION == 'CREATE_USER' }
-            }
-            steps {
-                script {
-                    echo "🧪 Testing Keycloak connection for new user..."
-                    // Optionally test if user can authenticate
-                    echo "✅ Connection test completed"
-                }
-            }
-        }
     }
     
     post {
@@ -293,9 +280,13 @@ pipeline {
             echo "❌ Pipeline failed!"
         }
         always {
-            // Clean up sensitive data
             script {
+                // Clean sensitive data
                 env.ACCESS_TOKEN = null
+
+                parameters.each { param ->
+                    param.value = null
+                }
             }
         }
     }

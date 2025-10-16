@@ -358,6 +358,14 @@ pipeline {
                             username: env.TEST_USERNAME
                         )
                     }
+                    // Clean sensitive data
+
+                    env.TEST_USER_ID = null
+                    env.ACCESS_TOKEN = null
+
+                    parameters.each { param ->
+                        param.value = null
+                    }
                 } catch (Exception e) {
                     echo "Note: Test user cleanup skipped (may already be deleted)"
                 }

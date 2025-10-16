@@ -253,6 +253,10 @@ pipeline {
                 
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
+
+                parameters.each { param ->
+                    param.value = null
+                }
             }
         }
         success {
