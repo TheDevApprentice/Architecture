@@ -382,7 +382,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            userId: env.TEST_USER_ID
+                            username: env.TEST_USERNAME
                         )
                         
                         echo "✅ Test user deleted"
