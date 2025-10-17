@@ -193,7 +193,9 @@ pipeline {
                                 params.WEB_ORIGINS.split('\n').collect { it.trim() }.findAll { it } : []
                             
                             def clientUuid = keycloakClient.createClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID,
                                 protocol: params.PROTOCOL,
                                 publicClient: params.PUBLIC_CLIENT,
@@ -211,7 +213,9 @@ pipeline {
                             if (!params.PUBLIC_CLIENT) {
                                 echo "🔐 Retrieving client secret..."
                                 def secret = keycloakClient.getClientSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
                                     accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
                                     clientId: params.CLIENT_ID
                                 )
                                 echo "✅ Client secret: ********${secret[-4..-1]}"
@@ -228,7 +232,9 @@ pipeline {
                                 params.REDIRECT_URIS.split('\n').collect { it.trim() }.findAll { it } : []
                             
                             def clientUuid = keycloakClient.createClientFromTemplate(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID,
                                 template: params.TEMPLATE,
                                 redirectUris: redirectUris
@@ -239,13 +245,17 @@ pipeline {
                             
                             // Get secret for non-public clients
                             def client = keycloakClient.getClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID
                             )
                             
                             if (!client.publicClient) {
                                 def secret = keycloakClient.getClientSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
                                     accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
                                     clientId: params.CLIENT_ID
                                 )
                                 echo "✅ Client secret: ********${secret[-4..-1]}"
@@ -260,7 +270,9 @@ pipeline {
                                 params.WEB_ORIGINS.split('\n').collect { it.trim() }.findAll { it } : null
                             
                             keycloakClient.updateClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID,
                                 redirectUris: redirectUris,
                                 webOrigins: webOrigins,
@@ -274,7 +286,9 @@ pipeline {
                             // Approval gate for destructive action
                             if (!params.DRY_RUN) {
                                 def client = keycloakClient.getClient(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
                                     accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
                                     clientId: params.CLIENT_ID
                                 )
                                 
@@ -295,7 +309,9 @@ pipeline {
                                 }
                                 
                                 keycloakClient.deleteClient(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
                                     accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
                                     clientId: params.CLIENT_ID
                                 )
                                 
@@ -307,7 +323,9 @@ pipeline {
                             
                         case 'LIST_CLIENTS':
                             def clients = keycloakClient.listClients(
-                                accessToken: env.ACCESS_TOKEN
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
                             )
                             
                             echo "📋 Clients in realm '${params.REALM}':"
@@ -327,7 +345,9 @@ pipeline {
                             
                         case 'GET_CLIENT':
                             def client = keycloakClient.getClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID
                             )
                             
@@ -362,7 +382,9 @@ pipeline {
                             
                         case 'GET_CLIENT_SECRET':
                             def secret = keycloakClient.getClientSecret(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID
                             )
                             
@@ -393,7 +415,9 @@ pipeline {
                                 }
                                 
                                 def newSecret = keycloakClient.regenerateSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
                                     accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
                                     clientId: params.CLIENT_ID
                                 )
                                 
@@ -407,18 +431,24 @@ pipeline {
                             
                         case 'ENABLE_CLIENT':
                             keycloakClient.setClientEnabled(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID,
                                 enabled: true
                             )
+                            echo "✅ Client '${params.CLIENT_ID}' enabled successfully"
                             break
                             
                         case 'DISABLE_CLIENT':
                             keycloakClient.setClientEnabled(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
                                 clientId: params.CLIENT_ID,
                                 enabled: false
                             )
+                            echo "✅ Client '${params.CLIENT_ID}' disabled successfully"
                             break
                             
                         default:
@@ -443,10 +473,6 @@ pipeline {
             script {
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
-
-                parameters.each { param ->
-                    param.value = null
-                }
             }
         }
     }
