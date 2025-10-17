@@ -88,12 +88,14 @@ ACTION: RESET_PASSWORD
 REALM: internal
 USERNAME: test-user-jenkins
 PASSWORD: NewPassword456!
-TEMPORARY_PASSWORD: false
+TEMPORARY_PASSWORD: true
 ```
 
 **Résultat attendu:**
 - ✅ Mot de passe réinitialisé
-- ✅ Mot de passe permanent (non temporaire)
+- ✅ Mot de passe **TOUJOURS temporaire** (sécurité)
+- ⚠️  Message: "User must change password on next login"
+- 🔐 L'utilisateur devra changer son mot de passe à la prochaine connexion
 
 ---
 
@@ -159,10 +161,15 @@ ATTRIBUTES: {"department": "IT", "location": "Paris"}
 DRY_RUN: false
 ```
 
+**Note sur les ATTRIBUTES:**
+- Format accepté : `{"key": "value"}` ou `{"key": ["value1", "value2"]}`
+- Les valeurs simples sont automatiquement converties en arrays par le pipeline
+- Format interne Keycloak : `{"key": ["value"]}`
+
 **Résultat attendu:**
 - ✅ Groupe créé avec succès
 - ✅ ID du groupe retourné
-- ✅ Attributs configurés
+- ✅ Attributs configurés (department: ["IT"], location: ["Paris"])
 
 ---
 
@@ -173,6 +180,15 @@ DRY_RUN: false
 ACTION: CREATE_GROUP
 REALM: internal
 GROUP_NAME: test-subgroup-jenkins
+PARENT_GROUP: test-group-jenkins
+NEW_GROUP_NAME: 
+USERNAMES: 
+ATTRIBUTES: {}
+DRY_RUN: false
+
+ACTION: CREATE_GROUP
+REALM: internal
+GROUP_NAME: test-subgroup1-jenkins
 PARENT_GROUP: test-group-jenkins
 NEW_GROUP_NAME: 
 USERNAMES: 
@@ -193,6 +209,14 @@ DRY_RUN: false
 ACTION: GET_GROUP
 REALM: internal
 GROUP_NAME: test-group-jenkins
+
+ACTION: GET_GROUP
+REALM: internal
+GROUP_NAME: test-subgroup-jenkins
+
+ACTION: GET_GROUP
+REALM: internal
+GROUP_NAME: test-subgroup1-jenkins
 ```
 
 **Résultat attendu:**
@@ -218,6 +242,11 @@ EMAIL: member1@test.local
 ACTION: CREATE_USER (dans User Management)
 USERNAME: member2-test
 EMAIL: member2@test.local
+
+# User 3
+ACTION: CREATE_USER (dans User Management)
+USERNAME: member3-test
+EMAIL: member3@test.local
 ```
 
 **Paramètres ADD_MEMBERS:**
@@ -228,6 +257,14 @@ GROUP_NAME: test-group-jenkins
 USERNAMES: 
 member1-test
 member2-test
+ATTRIBUTES: {}
+DRY_RUN: false
+
+ACTION: ADD_MEMBERS
+REALM: internal
+GROUP_NAME: test-subgroup-jenkins
+USERNAMES: 
+member3-test
 ATTRIBUTES: {}
 DRY_RUN: false
 ```
@@ -245,6 +282,10 @@ DRY_RUN: false
 ACTION: LIST_MEMBERS
 REALM: internal
 GROUP_NAME: test-group-jenkins
+
+ACTION: LIST_MEMBERS
+REALM: internal
+GROUP_NAME: test-subgroup-jenkins
 ```
 
 **Résultat attendu:**
@@ -265,9 +306,11 @@ ATTRIBUTES: {"department": "Engineering", "location": "Lyon", "updated": "true"}
 DRY_RUN: false
 ```
 
+**Note:** Les valeurs simples sont automatiquement converties en arrays
+
 **Résultat attendu:**
 - ✅ Groupe renommé
-- ✅ Attributs mis à jour
+- ✅ Attributs mis à jour (department: ["Engineering"], location: ["Lyon"], updated: ["true"])
 
 ---
 
@@ -300,7 +343,7 @@ REALM: internal
 
 **Résultat attendu:**
 - ✅ Liste des groupes sans membres
-- ✅ test-subgroup-jenkins devrait apparaître (sans membres)
+- ✅ test-subgroup1-jenkins devrait apparaître (sans membres)
 
 ---
 
