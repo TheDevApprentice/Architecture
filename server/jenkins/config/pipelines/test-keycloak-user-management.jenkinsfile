@@ -221,7 +221,7 @@ pipeline {
                             realm: params.REALM,
                             username: env.TEST_USERNAME,
                             password: newPassword,
-                            temporary: false
+                            temporary: true
                         )
                         
                         echo "✅ Password reset successfully"
@@ -340,10 +340,6 @@ pipeline {
 
                     env.TEST_USER_ID = null
                     env.ACCESS_TOKEN = null
-
-                    parameters.each { param ->
-                        param.value = null
-                    }
                 } catch (Exception e) {
                     echo "Note: Test user cleanup skipped (may already be deleted)"
                 }
