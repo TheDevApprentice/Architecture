@@ -6,6 +6,7 @@
 
 // Load Keycloak library functions
 def keycloakAuth
+def keycloakSession
 def keycloakAudit
 
 pipeline {
@@ -57,6 +58,7 @@ pipeline {
             steps {
                 script {
                     keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
                     keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
                     echo "✅ Keycloak library loaded successfully"
                 }
@@ -150,8 +152,10 @@ pipeline {
                     
                     switch(params.ACTION) {
                         case 'LIST_ACTIVE_SESSIONS':
-                            def sessions = keycloakAudit.getActiveSessions(
-                                accessToken: env.ACCESS_TOKEN
+                            def sessions = keycloakSession.listActiveSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
                             )
                             
                             echo "📊 Active Sessions in Realm '${params.REALM}':"
@@ -178,9 +182,26 @@ pipeline {
                             break
                             
                         case 'LIST_USER_SESSIONS':
-                            def sessions = keycloakAudit.getUserSessions(
+                            // First get user ID
+                            def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
-                                username: params.USERNAME
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                max: 1
+                            )
+                            
+                            if (users.size() == 0) {
+                                error("User '${params.USERNAME}' not found")
+                            }
+                            
+                            def userId = users[0].id
+                            def sessions = keycloakSession.listUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: userId
                             )
                             
                             echo "📊 Sessions for User '${params.USERNAME}':"
@@ -209,10 +230,28 @@ pipeline {
                             break
                             
                         case 'REVOKE_USER_SESSIONS':
-                            // Check if sessions exist first
-                            def sessions = keycloakAudit.getUserSessions(
+                            // First get user ID
+                            def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
-                                username: params.USERNAME
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                max: 1
+                            )
+                            
+                            if (users.size() == 0) {
+                                error("User '${params.USERNAME}' not found")
+                            }
+                            
+                            def userId = users[0].id
+                            
+                            // Check if sessions exist first
+                            def sessions = keycloakSession.listUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: userId
                             )
                             
                             if (sessions.size() == 0) {
@@ -238,9 +277,11 @@ pipeline {
                                 echo "🚨 EMERGENCY MODE: Skipping approval gate"
                             }
                             
-                            keycloakAudit.revokeUserSessions(
+                            keycloakSession.revokeUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
-                                username: params.USERNAME
+                                realm: params.REALM,
+                                userId: userId
                             )
                             
                             echo "✅ All sessions revoked for user '${params.USERNAME}'"
@@ -278,8 +319,10 @@ pipeline {
                                 echo "🚨 EMERGENCY MODE: Skipping approval gates"
                             }
                             
-                            keycloakAudit.revokeAllSessions(
-                                accessToken: env.ACCESS_TOKEN
+                            keycloakSession.revokeAllSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
                             )
                             
                             echo "✅ ALL sessions revoked in realm '${params.REALM}'"
@@ -288,7 +331,9 @@ pipeline {
                             
                         case 'SESSION_STATISTICS':
                             def stats = keycloakAudit.getSessionStatistics(
-                                accessToken: env.ACCESS_TOKEN
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
                             )
                             
                             echo "📊 Session Statistics for Realm '${params.REALM}':"
@@ -309,8 +354,10 @@ pipeline {
                         case 'DETECT_ANOMALIES':
                             echo "🔍 Detecting session anomalies..."
                             
-                            def sessions = keycloakAudit.getActiveSessions(
-                                accessToken: env.ACCESS_TOKEN
+                            def sessions = keycloakSession.listActiveSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
                             )
                             
                             def anomalies = []
@@ -408,10 +455,6 @@ pipeline {
             script {
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
-
-                parameters.each { param ->
-                    param.value = null
-                }
             }
         }
     }

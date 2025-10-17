@@ -161,20 +161,6 @@ pipeline {
             }
         }
         
-        stage('Get Access Token') {
-            steps {
-                script {
-                    echo "🔐 Obtaining Keycloak access token..."
-                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
-                        keycloakUrl: env.KC_URL_INTERNAL,
-                        clientId: env.KC_CLIENT_ID,
-                        clientSecret: env.KC_CLIENT_SECRET
-                    )
-                    echo "✅ Access token obtained"
-                }
-            }
-        }
-        
         stage('Execute Action') {
             steps {
                 script {
@@ -182,7 +168,8 @@ pipeline {
                     
                     switch(params.ACTION) {
                         case 'CREATE_USER':
-                            def password = params.PASSWORD ?: keycloakUser.generatePassword()
+                            // Convert password parameter to string (Jenkins encrypts it by default)
+                            def password = params.PASSWORD ? params.PASSWORD.toString() : keycloakUser.generatePassword()
                             def userId = keycloakUser.createUser(
                                 keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
@@ -193,7 +180,7 @@ pipeline {
                                 lastName: params.LAST_NAME,
                                 enabled: params.ENABLED,
                                 emailVerified: params.EMAIL_VERIFIED,
-                                password: params.PASSWORD,
+                                password: password,
                                 temporaryPassword: params.TEMPORARY_PASSWORD,
                                 locale: params.LOCALE
                             )
@@ -269,19 +256,26 @@ pipeline {
                             break
                             
                         case 'RESET_PASSWORD':
-                            def newPassword = params.PASSWORD ?: keycloakUser.generatePassword()
+                            echo "🔐 Resetting password for user: ${params.USERNAME}"
+                            
+                            // Convert password parameter to string
+                            def resetPassword = params.PASSWORD ? params.PASSWORD.toString() : null
+                            if (!resetPassword) {
+                                error("PASSWORD is required for password reset")
+                            }
+                            
+                            // Password reset is ALWAYS temporary for security reasons
+                            // User must change it on first login
                             keycloakUser.resetPassword(
                                 keycloakUrl: env.KC_URL_INTERNAL,
                                 accessToken: env.ACCESS_TOKEN,
                                 realm: params.REALM,
                                 username: params.USERNAME,
-                                password: newPassword,
-                                temporary: params.TEMPORARY_PASSWORD
+                                password: resetPassword,
+                                temporary: true
                             )
                             echo "✅ Password reset successfully"
-                            if (!params.PASSWORD) {
-                                echo "🔑 New password: ${newPassword}"
-                            }
+                            echo "⚠️  User must change password on next login"
                             break
                             
                         case 'ADD_TO_GROUP':
@@ -329,10 +323,6 @@ pipeline {
             script {
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
-
-                parameters.each { param ->
-                    param.value = null
-                }
             }
         }
     }

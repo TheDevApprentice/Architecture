@@ -51,12 +51,17 @@ def createClient(Map config) {
     
     def createUrl = "http://${keycloakUrl}/admin/realms/${realm}/clients"
     
+    // Write JSON to temporary file to avoid parsing issues
+    def tmpFile = "/tmp/keycloak-client-${clientId}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: clientJson
+    
     def response = sh(
         script: """
             curl -s -w "\\n%{http_code}" -X POST "${createUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${clientJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()
@@ -178,12 +183,17 @@ def updateClient(Map config) {
     
     def updateUrl = "http://${keycloakUrl}/admin/realms/${realm}/clients/${clientUuid}"
     
+    // Write JSON to temporary file to avoid parsing issues
+    def tmpFile = "/tmp/keycloak-client-update-${clientId}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: clientJson
+    
     def response = sh(
         script: """
             curl -s -w "\\n%{http_code}" -X PUT "${updateUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${clientJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()
