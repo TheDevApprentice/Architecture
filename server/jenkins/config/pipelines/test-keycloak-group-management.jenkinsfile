@@ -1,0 +1,375 @@
+/**
+ * Keycloak Group Management Integration Test Pipeline
+ * 
+ * Tests group operations: CRUD, members management, hierarchy
+ */
+
+def keycloakAuth
+def keycloakGroup
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REALM',
+            choices: ['internal'],
+            description: 'Keycloak realm to test'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        TEST_GROUP = "test-group-${BUILD_NUMBER}"
+        TEST_SUBGROUP = "test-subgroup-${BUILD_NUMBER}"
+        TEST_USERNAME = "test-user-group-${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Load Libraries') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakGroup = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakGroup.groovy'
+                    echo "✅ Libraries loaded"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('📋 Test 1: List Groups') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Listing existing groups..."
+                    echo "=" * 60
+                    
+                    try {
+                        def groups = keycloakGroup.listGroups(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Groups listed successfully"
+                        echo "   Total groups: ${groups.size()}"
+                        
+                        if (groups.size() > 0) {
+                            echo "\n   Sample groups:"
+                            groups.take(3).each { group ->
+                                echo "   - ${group.name} (ID: ${group.id})"
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to list groups: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('➕ Test 2: Create Group') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Creating test group..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_GROUP_ID = keycloakGroup.createGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP,
+                            attributes: [
+                                department: ['Engineering'],
+                                location: ['Test']
+                            ]
+                        )
+                        
+                        echo "✅ Group created successfully"
+                        echo "   Group: ${env.TEST_GROUP}"
+                        echo "   ID: ${env.TEST_GROUP_ID}"
+                    } catch (Exception e) {
+                        error("❌ Failed to create group: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔍 Test 3: Get Group Details') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 3: Retrieving group details..."
+                    echo "=" * 60
+                    
+                    try {
+                        def groupDetails = keycloakGroup.getGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP
+                        )
+                        
+                        echo "✅ Group details retrieved"
+                        echo "   Name: ${groupDetails.name}"
+                        echo "   Path: ${groupDetails.path}"
+                        echo "   Attributes: ${groupDetails.attributes}"
+                    } catch (Exception e) {
+                        error("❌ Failed to get group: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🌳 Test 4: Create Subgroup') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 4: Creating subgroup..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_SUBGROUP_ID = keycloakGroup.createGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_SUBGROUP,
+                            parentGroupName: env.TEST_GROUP
+                        )
+                        
+                        echo "✅ Subgroup created successfully"
+                        echo "   Parent: ${env.TEST_GROUP}"
+                        echo "   Subgroup: ${env.TEST_SUBGROUP}"
+                        echo "   ID: ${env.TEST_SUBGROUP_ID}"
+                    } catch (Exception e) {
+                        error("❌ Failed to create subgroup: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('👥 Test 5: Add Member to Group') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 5: Adding user to group..."
+                    echo "=" * 60
+                    
+                    try {
+                        // First create a test user
+                        def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                        
+                        env.TEST_USER_ID = keycloakUser.createUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            email: "${env.TEST_USERNAME}@test.local",
+                            enabled: true
+                        )
+                        
+                        echo "✅ Test user created: ${env.TEST_USERNAME}"
+                        
+                        // Add user to group
+                        keycloakGroup.addMembers(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP,
+                            usernames: [env.TEST_USERNAME]
+                        )
+                        
+                        echo "✅ User added to group successfully"
+                        echo "   User: ${env.TEST_USERNAME}"
+                        echo "   Group: ${env.TEST_GROUP}"
+                    } catch (Exception e) {
+                        error("❌ Failed to add member: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📋 Test 6: List Group Members') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 6: Listing group members..."
+                    echo "=" * 60
+                    
+                    try {
+                        def members = keycloakGroup.listMembers(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP
+                        )
+                        
+                        echo "✅ Members listed successfully"
+                        echo "   Total members: ${members.size()}"
+                        
+                        members.each { member ->
+                            echo "   - ${member.username}"
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to list members: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('✏️ Test 7: Update Group') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 7: Updating group attributes..."
+                    echo "=" * 60
+                    
+                    try {
+                        keycloakGroup.updateGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP,
+                            attributes: [
+                                department: ['Engineering'],
+                                location: ['Test'],
+                                updated: ['true']
+                            ]
+                        )
+                        
+                        echo "✅ Group updated successfully"
+                    } catch (Exception e) {
+                        error("❌ Failed to update group: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🗑️ Test 8: Cleanup') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 8: Cleaning up test resources..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Delete test user
+                        def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                        keycloakUser.deleteUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME
+                        )
+                        echo "✅ Test user deleted"
+                        
+                        // Delete subgroup first (to test subgroup deletion capability)
+                        keycloakGroup.deleteGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_SUBGROUP
+                        )
+                        echo "✅ Subgroup deleted"
+                        
+                        // Delete parent group
+                        keycloakGroup.deleteGroup(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            groupName: env.TEST_GROUP
+                        )
+                        echo "✅ Test group deleted"
+                        
+                        echo "\n✅ All test resources cleaned up"
+                    } catch (Exception e) {
+                        echo "⚠️ Cleanup warning: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "\n" + "=" * 60
+            echo "✅ ALL TESTS PASSED"
+            echo "=" * 60
+            echo "\nGroup Management Integration Tests Summary:"
+            echo "✅ List groups"
+            echo "✅ Create group"
+            echo "✅ Get group details"
+            echo "✅ Create subgroup"
+            echo "✅ Add member to group"
+            echo "✅ List group members"
+            echo "✅ Update group"
+            echo "✅ Cleanup"
+            echo "\n🎉 Keycloak Group Management is fully functional!"
+        }
+        failure {
+            echo "\n" + "=" * 60
+            echo "❌ TESTS FAILED"
+            echo "=" * 60
+            echo "\n⚠️  Check the logs above for details"
+        }
+        always {
+            script {
+                echo "\nTest completed at: ${new Date()}"
+
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+                env.TEST_GROUP_ID = null
+                env.TEST_SUBGROUP_ID = null
+                env.TEST_USER_ID = null
+            }
+        }
+    }
+}

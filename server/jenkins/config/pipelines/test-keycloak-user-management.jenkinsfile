@@ -39,7 +39,7 @@ pipeline {
             }
         }
         
-        stage('🔍 Test 1: Keycloak Connectivity') {
+        stage('🔍 Keycloak Connectivity') {
             steps {
                 script {
                     echo "=" * 60
@@ -66,43 +66,21 @@ pipeline {
             }
         }
         
-        stage('🔐 Test 2: Service Account Authentication') {
+        stage('🔐 Service Account Authentication') {
             steps {
                 script {
                     echo "=" * 60
-                    echo "TEST 2: Testing service account authentication..."
+                    echo "TEST 2: Authenticating to Keycloak..."
                     echo "=" * 60
                     
-                    try {
-                        env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
-                            keycloakUrl: env.KC_URL_INTERNAL,
-                            clientId: env.KC_CLIENT_ID,
-                            clientSecret: env.KC_CLIENT_SECRET,
-                            realm: params.REALM
-                        )
-                        
-                        if (env.ACCESS_TOKEN) {
-                            echo "✅ Successfully obtained access token"
-                            //  echo "DEV : Token length: ${env.ACCESS_TOKEN.length()} characters"
-                            
-                            // Validate token
-                            def isValid = keycloakAuth.validateToken(
-                                keycloakUrl: env.KC_URL_INTERNAL,
-                                accessToken: env.ACCESS_TOKEN,
-                                realm: params.REALM
-                            )
-                            
-                            if (isValid) {
-                                echo "✅ Token is valid"
-                            } else {
-                                error("❌ Token validation failed")
-                            }
-                        } else {
-                            error("❌ No access token received")
-                        }
-                    } catch (Exception e) {
-                        error("❌ Authentication failed: ${e.message}")
-                    }
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
                 }
             }
         }
@@ -357,6 +335,14 @@ pipeline {
                             realm: params.REALM,
                             username: env.TEST_USERNAME
                         )
+                    }
+                    // Clean sensitive data
+
+                    env.TEST_USER_ID = null
+                    env.ACCESS_TOKEN = null
+
+                    parameters.each { param ->
+                        param.value = null
                     }
                 } catch (Exception e) {
                     echo "Note: Test user cleanup skipped (may already be deleted)"

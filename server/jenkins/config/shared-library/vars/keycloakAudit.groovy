@@ -1,198 +1,9 @@
 /**
  * Keycloak Audit & Reporting Library
- * Provides functions for security audits, session management, and compliance reporting
+ * Provides functions for security audits and compliance reporting
+ * 
+ * Note: Core session management functions are in keycloakSession.groovy
  */
-
-/**
- * Get all active sessions in realm
- * @param config Map with accessToken
- * @return List of active sessions
- */
-def getActiveSessions(Map config) {
-    def keycloakUrl = env.KC_URL_INTERNAL
-    def accessToken = config.accessToken
-    def realm = env.KC_REALM
-    
-    echo "📊 Retrieving active sessions in realm '${realm}'..."
-    
-    // Get all clients first
-    def clientsUrl = "http://${keycloakUrl}/admin/realms/${realm}/clients"
-    
-    def clientsResponse = sh(
-        script: """
-            curl -s -X GET "${clientsUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def clients = readJSON(text: clientsResponse)
-    
-    def allSessions = []
-    def sessionCount = 0
-    
-    // Get sessions for each client
-    clients.each { client ->
-        try {
-            def sessionsUrl = "http://${keycloakUrl}/admin/realms/${realm}/clients/${client.id}/user-sessions"
-            
-            def sessionsResponse = sh(
-                script: """
-                    curl -s -X GET "${sessionsUrl}" \\
-                        -H "Authorization: Bearer ${accessToken}"
-                """,
-                returnStdout: true
-            ).trim()
-            
-            def clientSessions = readJSON(text: sessionsResponse)
-            
-            if (clientSessions && clientSessions.size() > 0) {
-                clientSessions.each { session ->
-                    session.clientId = client.clientId
-                    allSessions << session
-                    sessionCount++
-                }
-            }
-        } catch (Exception e) {
-            // Skip clients without sessions
-        }
-    }
-    
-    echo "✅ Found ${sessionCount} active sessions across ${clients.size()} clients"
-    return allSessions
-}
-
-/**
- * Get sessions for a specific user
- * @param config Map with accessToken and username
- * @return List of user sessions
- */
-def getUserSessions(Map config) {
-    def keycloakUrl = env.KC_URL_INTERNAL
-    def accessToken = config.accessToken
-    def realm = env.KC_REALM
-    def username = config.username
-    
-    echo "📊 Retrieving sessions for user '${username}'..."
-    
-    // First get user ID
-    def searchUrl = "http://${keycloakUrl}/admin/realms/${realm}/users?username=${URLEncoder.encode(username, 'UTF-8')}&exact=true"
-    
-    def userResponse = sh(
-        script: """
-            curl -s -X GET "${searchUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def users = readJSON(text: userResponse)
-    
-    if (!users || users.size() == 0) {
-        error("User '${username}' not found")
-    }
-    
-    def userId = users[0].id
-    
-    // Get user sessions
-    def sessionsUrl = "http://${keycloakUrl}/admin/realms/${realm}/users/${userId}/sessions"
-    
-    def sessionsResponse = sh(
-        script: """
-            curl -s -X GET "${sessionsUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def sessions = readJSON(text: sessionsResponse)
-    
-    echo "✅ Found ${sessions.size()} sessions for user '${username}'"
-    return sessions
-}
-
-/**
- * Revoke all sessions for a user
- * @param config Map with accessToken and username
- */
-def revokeUserSessions(Map config) {
-    def keycloakUrl = env.KC_URL_INTERNAL
-    def accessToken = config.accessToken
-    def realm = env.KC_REALM
-    def username = config.username
-    
-    echo "🔒 Revoking all sessions for user '${username}'..."
-    
-    // First get user ID
-    def searchUrl = "http://${keycloakUrl}/admin/realms/${realm}/users?username=${URLEncoder.encode(username, 'UTF-8')}&exact=true"
-    
-    def userResponse = sh(
-        script: """
-            curl -s -X GET "${searchUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def users = readJSON(text: userResponse)
-    
-    if (!users || users.size() == 0) {
-        error("User '${username}' not found")
-    }
-    
-    def userId = users[0].id
-    
-    // Logout user (revokes all sessions)
-    def logoutUrl = "http://${keycloakUrl}/admin/realms/${realm}/users/${userId}/logout"
-    
-    def response = sh(
-        script: """
-            curl -s -w "\\n%{http_code}" -X POST "${logoutUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def lines = response.split('\n')
-    def httpCode = lines[-1]
-    
-    if (httpCode != '204') {
-        error("Failed to revoke sessions. HTTP ${httpCode}")
-    }
-    
-    echo "✅ All sessions revoked for user '${username}'"
-}
-
-/**
- * Revoke all sessions in realm (EMERGENCY)
- * @param config Map with accessToken
- */
-def revokeAllSessions(Map config) {
-    def keycloakUrl = env.KC_URL_INTERNAL
-    def accessToken = config.accessToken
-    def realm = env.KC_REALM
-    
-    echo "⚠️  EMERGENCY: Revoking ALL sessions in realm '${realm}'..."
-    
-    def logoutUrl = "http://${keycloakUrl}/admin/realms/${realm}/logout-all"
-    
-    def response = sh(
-        script: """
-            curl -s -w "\\n%{http_code}" -X POST "${logoutUrl}" \\
-                -H "Authorization: Bearer ${accessToken}"
-        """,
-        returnStdout: true
-    ).trim()
-    
-    def lines = response.split('\n')
-    def httpCode = lines[-1]
-    
-    if (httpCode != '204') {
-        error("Failed to revoke all sessions. HTTP ${httpCode}")
-    }
-    
-    echo "✅ ALL sessions revoked in realm '${realm}'"
-}
 
 /**
  * Detect users with unverified emails
@@ -472,18 +283,25 @@ def generateUserTable(users) {
 }
 
 /**
- * Get session statistics
+ * Get session statistics (audit view)
  * @param config Map with accessToken
  * @return Session statistics
  */
 def getSessionStatistics(Map config) {
-    def sessions = getActiveSessions(config)
+    // Load keycloakSession helper
+    def keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+    
+    def sessions = keycloakSession.listActiveSessions(config)
     
     def stats = [
         totalSessions: sessions.size(),
         uniqueUsers: sessions.collect { it.username }.unique().size(),
         uniqueClients: sessions.collect { it.clientId }.unique().size(),
-        averageSessionAge: 0
+        averageSessionAge: 0,
+        activeSessions: sessions.size(),
+        offlineSessions: 0,
+        totalClients: sessions.collect { it.clientId }.unique().size(),
+        clientSessions: []
     ]
     
     if (sessions.size() > 0) {
@@ -491,10 +309,103 @@ def getSessionStatistics(Map config) {
         def totalAge = sessions.sum { session ->
             session.start ? (now - session.start) : 0
         }
-        stats.averageSessionAge = (totalAge / sessions.size() / 1000 / 60).intValue() // minutes
+        stats.averageSessionAge = (totalAge / sessions.size() / 1000 / 60).intValue()
+        
+        // Group by client
+        def byClient = sessions.groupBy { it.clientId }
+        stats.clientSessions = byClient.collect { clientId, clientSessions ->
+            [
+                clientId: clientId,
+                active: clientSessions.size(),
+                offline: 0
+            ]
+        }
     }
     
     return stats
+}
+
+/**
+ * Detect session anomalies
+ * @param config Map with accessToken, maxSessionAgeDays, suspiciousIPPatterns
+ * @return List of detected anomalies
+ */
+def detectAnomalies(Map config) {
+    // Load keycloakSession helper
+    def keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+    
+    def sessions = config.sessions ?: keycloakSession.listActiveSessions(config)
+    def maxSessionAgeDays = config.maxSessionAgeDays ?: 7
+    def suspiciousIPPatterns = config.suspiciousIPPatterns ?: []
+    
+    def now = System.currentTimeMillis()
+    def maxAgeMs = maxSessionAgeDays * 24L * 60L * 60L * 1000L
+    def regexes = suspiciousIPPatterns.collect { pattern ->
+        def escaped = pattern.replace('.', '\\.')
+        '^' + escaped.replace('*', '.*') + '$'
+    }
+    
+    def anomalies = []
+    
+    sessions.each { session ->
+        def lastAccess = session.lastAccess ?: session.start
+        if (lastAccess) {
+            def ageMs = now - (lastAccess as Long)
+            
+            if (ageMs > maxAgeMs) {
+                def ageDays = (ageMs / (24L * 60L * 60L * 1000L)).intValue()
+                anomalies << [
+                    type: 'LONG_RUNNING_SESSION',
+                    sessionId: session.id,
+                    username: session.username,
+                    description: "Session active for ${ageDays} days",
+                    ageInDays: ageDays
+                ]
+            }
+        }
+        
+        def ip = session.ipAddress ?: ''
+        regexes.each { regex ->
+            if (ip ==~ regex) {
+                anomalies << [
+                    type: 'SUSPICIOUS_IP',
+                    sessionId: session.id,
+                    username: session.username,
+                    description: "IP ${ip} matches pattern",
+                    ipAddress: ip
+                ]
+            }
+        }
+    }
+    
+    return anomalies
+}
+
+
+
+/**
+ * Generate session report (JSON format)
+ * @param config Map with accessToken, format, includeAnomalies, maxSessionAgeDays
+ * @return JSON report
+ */
+def generateSessionReport(Map config) {
+    // Load keycloakSession helper
+    def keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+    
+    def sessions = config.sessions ?: keycloakSession.listActiveSessions(config)
+    def anomalies = config.includeAnomalies ? detectAnomalies(config + [sessions: sessions]) : []
+    def longSessions = keycloakSession.findLongRunningSessions(config + [sessions: sessions])
+    
+    def payload = [
+        generatedAt: new Date().toString(),
+        realm: config.realm ?: env.KC_REALM,
+        activeSessionCount: sessions.size(),
+        anomalies: anomalies,
+        longRunningSessions: longSessions,
+        sampleSessions: sessions.take(10)
+    ]
+    
+    return groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(payload))
 }
 
 return this

@@ -63,6 +63,52 @@ pipeline {
             }
         }
         
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+
         stage('Validate Parameters') {
             steps {
                 script {
@@ -362,6 +408,10 @@ pipeline {
             script {
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
+
+                parameters.each { param ->
+                    param.value = null
+                }
             }
         }
     }

@@ -1,0 +1,405 @@
+/**
+ * Keycloak Client Management Integration Test Pipeline
+ * 
+ * Tests client operations: CRUD, secret management, OIDC/SAML clients
+ */
+
+def keycloakAuth
+def keycloakClient
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REALM',
+            choices: ['internal'],
+            description: 'Keycloak realm to test'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        TEST_CLIENT_ID = "test-client-${BUILD_NUMBER}"
+        TEST_PUBLIC_CLIENT = "test-public-client-${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Load Libraries') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakClient = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakClient.groovy'
+                    echo "✅ Libraries loaded"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('📋 Test 1: List Clients') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Listing existing clients..."
+                    echo "=" * 60
+                    
+                    try {
+                        def clients = keycloakClient.listClients(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Clients listed successfully"
+                        echo "   Total clients: ${clients.size()}"
+                        
+                        if (clients.size() > 0) {
+                            echo "\n   Sample clients:"
+                            clients.take(5).each { client ->
+                                echo "   - ${client.clientId} (Protocol: ${client.protocol})"
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to list clients: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('➕ Test 2: Create Confidential Client') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Creating confidential OIDC client..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_CLIENT_UUID = keycloakClient.createClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID,
+                            protocol: 'openid-connect',
+                            publicClient: false,
+                            redirectUris: [
+                                'http://localhost:3000/*',
+                                'https://test.example.com/*'
+                            ],
+                            webOrigins: [
+                                'http://localhost:3000',
+                                'https://test.example.com'
+                            ],
+                            description: 'Test confidential client',
+                            serviceAccountsEnabled: true
+                        )
+                        
+                        echo "✅ Confidential client created"
+                        echo "   Client ID: ${env.TEST_CLIENT_ID}"
+                        echo "   UUID: ${env.TEST_CLIENT_UUID}"
+                    } catch (Exception e) {
+                        error("❌ Failed to create client: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('➕ Test 3: Create Public Client (SPA)') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 3: Creating public client (SPA)..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_PUBLIC_CLIENT_UUID = keycloakClient.createClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_PUBLIC_CLIENT,
+                            protocol: 'openid-connect',
+                            publicClient: true,
+                            redirectUris: ['http://localhost:8080/*'],
+                            webOrigins: ['http://localhost:8080'],
+                            description: 'Test public client (SPA)'
+                        )
+                        
+                        echo "✅ Public client created"
+                        echo "   Client ID: ${env.TEST_PUBLIC_CLIENT}"
+                        echo "   UUID: ${env.TEST_PUBLIC_CLIENT_UUID}"
+                    } catch (Exception e) {
+                        error("❌ Failed to create public client: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔍 Test 4: Get Client Details') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 4: Retrieving client details..."
+                    echo "=" * 60
+                    
+                    try {
+                        def clientDetails = keycloakClient.getClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID
+                        )
+                        
+                        echo "✅ Client details retrieved"
+                        echo "   Client ID: ${clientDetails.clientId}"
+                        echo "   Protocol: ${clientDetails.protocol}"
+                        echo "   Public: ${clientDetails.publicClient}"
+                        echo "   Redirect URIs: ${clientDetails.redirectUris}"
+                    } catch (Exception e) {
+                        error("❌ Failed to get client: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔑 Test 5: Get Client Secret') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 5: Retrieving client secret..."
+                    echo "=" * 60
+                    
+                    try {
+                        def secret = keycloakClient.getClientSecret(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID
+                        )
+                        
+                        if (secret) {
+                            echo "✅ Client secret retrieved"
+                            echo "   Secret length: ${secret.length()} characters"
+                            env.ORIGINAL_SECRET = secret
+                        } else {
+                            error("❌ No secret returned")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to get secret: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔄 Test 6: Regenerate Client Secret') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 6: Regenerating client secret..."
+                    echo "=" * 60
+                    
+                    try {
+                        def newSecret = keycloakClient.regenerateSecret(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID
+                        )
+                        
+                        echo "✅ Secret regenerated successfully"
+                        echo "   New secret length: ${newSecret.length()} characters"
+                        
+                        if (newSecret != env.ORIGINAL_SECRET) {
+                            echo "✅ Secret changed (as expected)"
+                        } else {
+                            error("❌ Secret did not change")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to regenerate secret: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('✏️ Test 7: Update Client') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 7: Updating client configuration..."
+                    echo "=" * 60
+                    
+                    try {
+                        keycloakClient.updateClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID,
+                            enabled: true,
+                            description: 'Updated test client',
+                            redirectUris: [
+                                'http://localhost:3000/*',
+                                'https://test.example.com/*',
+                                'https://new-url.example.com/*'
+                            ]
+                        )
+                        
+                        echo "✅ Client updated successfully"
+                    } catch (Exception e) {
+                        error("❌ Failed to update client: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔴 Test 8: Disable/Enable Client') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 8: Testing disable/enable client..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Disable
+                        keycloakClient.setClientEnabled(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID,
+                            enabled: false
+                        )
+                        echo "✅ Client disabled"
+                        
+                        sleep(2)
+                        
+                        // Enable
+                        keycloakClient.setClientEnabled(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID,
+                            enabled: true
+                        )
+                        echo "✅ Client re-enabled"
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to toggle client status: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🗑️ Test 9: Cleanup') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 9: Cleaning up test clients..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Delete confidential client
+                        keycloakClient.deleteClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_CLIENT_ID
+                        )
+                        echo "✅ Confidential client deleted"
+                        
+                        // Delete public client
+                        keycloakClient.deleteClient(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            clientId: env.TEST_PUBLIC_CLIENT
+                        )
+                        echo "✅ Public client deleted"
+                        
+                        echo "\n✅ All test clients cleaned up"
+                    } catch (Exception e) {
+                        echo "⚠️ Cleanup warning: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "\n" + "=" * 60
+            echo "✅ ALL TESTS PASSED"
+            echo "=" * 60
+            echo "\nClient Management Integration Tests Summary:"
+            echo "✅ List clients"
+            echo "✅ Create confidential client (OIDC)"
+            echo "✅ Create public client (SPA)"
+            echo "✅ Get client details"
+            echo "✅ Get client secret"
+            echo "✅ Regenerate client secret"
+            echo "✅ Update client"
+            echo "✅ Disable/Enable client"
+            echo "✅ Cleanup"
+            echo "\n🎉 Keycloak Client Management is fully functional!"
+        }
+        failure {
+            echo "\n" + "=" * 60
+            echo "❌ TESTS FAILED"
+            echo "=" * 60
+            echo "\n⚠️  Check the logs above for details"
+        }
+        always {
+            script {
+                echo "\nTest completed at: ${new Date()}"
+
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+                env.TEST_CLIENT_UUID = null
+                env.TEST_PUBLIC_CLIENT_UUID = null
+            }
+        }
+    }
+}
