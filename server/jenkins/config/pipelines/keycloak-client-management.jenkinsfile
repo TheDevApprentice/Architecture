@@ -336,7 +336,15 @@ pipeline {
                                 echo "  ${status} ${client.clientId} (${type})"
                                 echo "      Protocol: ${client.protocol}"
                                 if (client.redirectUris && client.redirectUris.size() > 0) {
-                                    echo "      Redirect URIs: ${client.redirectUris.join(', ')}"
+                                    // Convert to list and join manually to avoid sandbox issues
+                                    def uris = client.redirectUris.collect { it.toString() }
+                                    echo "      Redirect URIs: ${uris.size()} configured"
+                                    uris.take(3).each { uri ->
+                                        echo "        - ${uri}"
+                                    }
+                                    if (uris.size() > 3) {
+                                        echo "        ... and ${uris.size() - 3} more"
+                                    }
                                 }
                             }
                             echo "=" * 80
