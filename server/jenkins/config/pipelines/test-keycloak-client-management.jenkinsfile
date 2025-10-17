@@ -192,7 +192,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID
                         )
                         
                         echo "✅ Client details retrieved"
@@ -219,7 +219,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID
                         )
                         
                         if (secret) {
@@ -244,11 +244,11 @@ pipeline {
                     echo "=" * 60
                     
                     try {
-                        def newSecret = keycloakClient.regenerateClientSecret(
+                        def newSecret = keycloakClient.regenerateSecret(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID
                         )
                         
                         echo "✅ Secret regenerated successfully"
@@ -278,7 +278,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID,
+                            clientId: env.TEST_CLIENT_ID,
                             enabled: true,
                             description: 'Updated test client',
                             redirectUris: [
@@ -305,22 +305,24 @@ pipeline {
                     
                     try {
                         // Disable
-                        keycloakClient.disableClient(
+                        keycloakClient.setClientEnabled(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID,
+                            enabled: false
                         )
                         echo "✅ Client disabled"
                         
                         sleep(2)
                         
                         // Enable
-                        keycloakClient.enableClient(
+                        keycloakClient.setClientEnabled(
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID,
+                            enabled: true
                         )
                         echo "✅ Client re-enabled"
                         
@@ -344,7 +346,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_CLIENT_UUID
+                            clientId: env.TEST_CLIENT_ID
                         )
                         echo "✅ Confidential client deleted"
                         
@@ -353,7 +355,7 @@ pipeline {
                             keycloakUrl: env.KC_URL_INTERNAL,
                             accessToken: env.ACCESS_TOKEN,
                             realm: params.REALM,
-                            clientUuid: env.TEST_PUBLIC_CLIENT_UUID
+                            clientId: env.TEST_PUBLIC_CLIENT
                         )
                         echo "✅ Public client deleted"
                         
@@ -395,10 +397,8 @@ pipeline {
 
                 // Clean sensitive data
                 env.ACCESS_TOKEN = null
-
-                parameters.each { param ->
-                    param.value = null
-                }
+                env.TEST_CLIENT_UUID = null
+                env.TEST_PUBLIC_CLIENT_UUID = null
             }
         }
     }
