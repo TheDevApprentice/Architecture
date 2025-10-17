@@ -44,12 +44,17 @@ def createGroup(Map config) {
         echo "📁 Creating as child of group '${parentGroupName}'"
     }
     
+    // Write JSON to temporary file to avoid parsing issues
+    def tmpFile = "/tmp/keycloak-group-${groupName}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: groupJson
+    
     def response = sh(
         script: """
             curl -s -i -X POST "${createUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${groupJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()
@@ -107,12 +112,17 @@ def updateGroup(Map config) {
     
     def updateUrl = "http://${keycloakUrl}/admin/realms/${realm}/groups/${groupId}"
     
+    // Write JSON to temporary file to avoid parsing issues
+    def tmpFile = "/tmp/keycloak-group-update-${groupName}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: groupJson
+    
     def response = sh(
         script: """
             curl -s -w "\\n%{http_code}" -X PUT "${updateUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${groupJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()

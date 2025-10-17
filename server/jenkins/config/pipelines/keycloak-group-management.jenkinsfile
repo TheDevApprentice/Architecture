@@ -175,7 +175,11 @@ pipeline {
                             def attributes = [:]
                             if (params.ATTRIBUTES && params.ATTRIBUTES.trim() && params.ATTRIBUTES != '{}') {
                                 try {
-                                    attributes = readJSON(text: params.ATTRIBUTES)
+                                    def parsedAttributes = readJSON(text: params.ATTRIBUTES)
+                                    // Convert attribute values to arrays (Keycloak format)
+                                    parsedAttributes.each { key, value ->
+                                        attributes[key] = value instanceof List ? value : [value.toString()]
+                                    }
                                 } catch (Exception e) {
                                     error("Failed to parse ATTRIBUTES JSON: ${e.message}")
                                 }
@@ -199,7 +203,12 @@ pipeline {
                             def attributes = null
                             if (params.ATTRIBUTES && params.ATTRIBUTES.trim() && params.ATTRIBUTES != '{}') {
                                 try {
-                                    attributes = readJSON(text: params.ATTRIBUTES)
+                                    def parsedAttributes = readJSON(text: params.ATTRIBUTES)
+                                    // Convert attribute values to arrays (Keycloak format)
+                                    attributes = [:]
+                                    parsedAttributes.each { key, value ->
+                                        attributes[key] = value instanceof List ? value : [value.toString()]
+                                    }
                                 } catch (Exception e) {
                                     error("Failed to parse ATTRIBUTES JSON: ${e.message}")
                                 }
