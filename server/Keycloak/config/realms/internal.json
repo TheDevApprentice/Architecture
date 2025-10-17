@@ -368,7 +368,7 @@
       "enabled": true,
       "serviceAccountClientId": "${KC_CLIENT_ID_JENKINS_AUTOMATION}",
       "clientRoles": {
-        "realm-management": ["manage-users", "view-users", "query-users", "query-groups", "view-clients", "query-clients"]
+        "realm-management": ["manage-users", "view-users", "query-users", "query-groups", "view-clients", "query-clients", "manage-clients"]
       }
     }
   ],
