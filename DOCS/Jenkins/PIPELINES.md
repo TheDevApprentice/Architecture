@@ -1,734 +1,682 @@
-# 🔄 Jenkins Pipelines - Documentation Complète
+# 🔄 Jenkins Pipelines - Documentation Complète v0.2.0
 
 ## 📋 Table des Matières
 
 - [Vue d'ensemble](#vue-densemble)
-- [Pipeline 1: Keycloak User Management](#pipeline-1-keycloak-user-management)
-- [Pipeline 2: Employee Onboarding Webhook](#pipeline-2-employee-onboarding-webhook)
-- [Pipeline 3: Test Keycloak Integration](#pipeline-3-test-keycloak-integration)
-- [Utilisation des Pipelines](#utilisation-des-pipelines)
+- [Pipelines de Management](#pipelines-de-management)
+  - [1. User Management](#1-user-management-pipeline)
+  - [2. Group Management](#2-group-management-pipeline)
+  - [3. Client Management](#3-client-management-pipeline)
+  - [4. Session Management](#4-session-management-pipeline)
+- [Pipelines de Reporting](#pipelines-de-reporting)
+  - [5. Security Audit](#5-security-audit-pipeline)
+  - [6. Compliance Report](#6-compliance-report-pipeline)
+- [Pipelines de Test](#pipelines-de-test)
+- [Shared Library Reference](#shared-library-reference)
 - [Exemples d'Utilisation](#exemples-dutilisation)
 
 ---
 
 ## Vue d'ensemble
 
-Cette configuration Jenkins inclut **3 pipelines préconfigurés** pour automatiser la gestion des utilisateurs Keycloak. Ces pipelines sont créés automatiquement au démarrage de Jenkins via les scripts `init.groovy.d`.
+**Version:** v0.2.0 - Keycloak Management Automation Suite  
+**Date:** October 18, 2025  
+**Realm:** `internal`
 
-### Pipelines Disponibles
+Cette configuration Jenkins inclut **10 pipelines de production** pour l'automatisation complète de la gestion Keycloak. Le système comprend 4 pipelines de management, 2 pipelines de reporting, et 4 pipelines de tests d'intégration.
 
-| Pipeline | Type | Trigger | Objectif |
-|----------|------|---------|----------|
-| **Keycloak-User-Management** | Paramétré | Manuel | Gestion interactive des utilisateurs |
-| **Employee-Onboarding-Webhook** | Automatique | Webhook | Onboarding automatisé d'employés |
-| **Test-Keycloak-Integration** | Test | Manuel | Suite de tests d'intégration |
+### 📊 Statistiques
+
+- **10 pipelines** (4 management, 2 reporting, 4 testing)
+- **31 actions** au total
+- **42 tests d'intégration** avec cleanup automatique
+- **6 modules** de bibliothèque partagée (~2,360 lignes)
+- **~6,700 lignes** de code au total
+
+### 🗂️ Organisation des Pipelines
+
+| Catégorie | Pipeline | Actions | Tests | Objectif |
+|-----------|----------|---------|-------|----------|
+| **Management** | User Management | 6 | 7 | CRUD utilisateurs |
+| **Management** | Group Management | 9 | 8 | Gestion groupes & membres |
+| **Management** | Client Management | 10 | 8 | Gestion clients OAuth2/OIDC |
+| **Management** | Session Management | 6 | 6 | Monitoring & contrôle sessions |
+| **Reporting** | Security Audit | 9 checks | - | Audit de sécurité |
+| **Reporting** | Compliance Report | 6 types | - | Rapports de conformité |
+| **Testing** | Test User Mgmt | - | 7 | Tests utilisateurs |
+| **Testing** | Test Group Mgmt | - | 8 | Tests groupes |
+| **Testing** | Test Client Mgmt | - | 8 | Tests clients |
+| **Testing** | Test Session Mgmt | - | 6 | Tests sessions |
+
+### 🔐 Sécurité
+
+- ✅ Service account `jenkins-automation` avec permissions minimales
+- ✅ Token-based authentication (5-minute expiration)
+- ✅ Passwords never logged or exposed
+- ✅ Client secrets masked (only last 4 chars shown)
+- ✅ Temporary files for sensitive payloads (auto-deleted)
+- ✅ Manual confirmation gates for destructive operations
+- ✅ DRY_RUN mode for safe testing
 
 ---
 
-## Pipeline 1: Keycloak User Management
+## Pipelines de Management
 
-### 📄 Description
+### 1. User Management Pipeline
 
-Pipeline interactif permettant de gérer manuellement les utilisateurs Keycloak via l'interface Jenkins. Il offre une interface conviviale pour toutes les opérations CRUD sur les utilisateurs.
+**Pipeline:** `Keycloak/Keycloak-User-Management`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-user-management.jenkinsfile`
 
-### 📍 Emplacement
+#### 📄 Description
 
-```
-Fichier: server/Jenkins/config/pipelines/keycloak-user-management.jenkinsfile
-Job: Keycloak-User-Management
-```
+Pipeline interactif pour la gestion complète des utilisateurs Keycloak (CRUD operations).
 
-### 🎯 Actions Disponibles
+#### 🎯 Actions Disponibles (6)
 
 1. **CREATE_USER** - Créer un nouveau compte utilisateur
-2. **UPDATE_USER** - Mettre à jour un utilisateur existant
+2. **UPDATE_USER** - Mettre à jour les détails d'un utilisateur
 3. **DELETE_USER** - Supprimer un utilisateur
-4. **RESET_PASSWORD** - Réinitialiser le mot de passe
-5. **ADD_TO_GROUP** - Ajouter un utilisateur à un groupe
-6. **LIST_USERS** - Lister tous les utilisateurs du realm
+4. **LIST_USERS** - Lister tous les utilisateurs du realm
+5. **RESET_PASSWORD** - Réinitialiser le mot de passe
+6. **ADD_TO_GROUP** - Ajouter un utilisateur à un groupe
 
-### ⚙️ Paramètres
+#### ⚙️ Paramètres Principaux
 
-| Paramètre | Type | Obligatoire | Description | Valeur par défaut |
-|-----------|------|-------------|-------------|-------------------|
-| **ACTION** | Choice | ✅ | Action à effectuer | `CREATE_USER` |
-| **REALM** | String | ✅ | Realm Keycloak | `internal` |
-| **USERNAME** | String | ✅ (sauf LIST) | Nom d'utilisateur | - |
-| **EMAIL** | String | ✅ (CREATE) | Adresse email | - |
-| **FIRST_NAME** | String | ❌ | Prénom | - |
-| **LAST_NAME** | String | ❌ | Nom de famille | - |
-| **GROUP_NAME** | String | ❌ | Groupe à assigner | - |
-| **LOCALE** | Choice | ❌ | Langue préférée | `en` |
-| **EMAIL_VERIFIED** | Boolean | ❌ | Email vérifié | `false` |
-| **ENABLED** | Boolean | ❌ | Compte activé | `true` |
-| **TEMPORARY_PASSWORD** | Boolean | ❌ | Mot de passe temporaire | `true` |
-| **PASSWORD** | Password | ❌ | Mot de passe (auto-généré si vide) | `changeMe123!` |
+| Paramètre | Type | Obligatoire | Description |
+|-----------|------|-------------|-------------|
+| ACTION | Choice | ✅ | Action à effectuer |
+| USERNAME | String | ✅ | Nom d'utilisateur |
+| EMAIL | String | ✅ (CREATE) | Adresse email |
+| FIRST_NAME | String | ❌ | Prénom |
+| LAST_NAME | String | ❌ | Nom de famille |
+| PASSWORD | Password | ❌ | Mot de passe (auto-généré si vide) |
+| GROUP_NAME | String | ❌ | Groupe à assigner |
+| LOCALE | Choice | ❌ | Langue (en/fr) |
 
-### 🔄 Flux d'Exécution
+#### 🔒 Sécurité
 
-```
-┌─────────────────────────────────────────┐
-│  1. Load Keycloak Library               │
-│     - keycloakAuth.groovy               │
-│     - keycloakUser.groovy               │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  2. Validate Parameters                 │
-│     - Check required fields             │
-│     - Validate action-specific params   │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  3. Get Access Token                    │
-│     - Service account authentication    │
-│     - Keycloak token endpoint           │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  4. Execute Action                      │
-│     - Switch based on ACTION param      │
-│     - Call appropriate library function │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  5. Test Connection (CREATE only)       │
-│     - Optional connectivity test        │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  6. Cleanup                             │
-│     - Clear sensitive data              │
-│     - Null ACCESS_TOKEN                 │
-└─────────────────────────────────────────┘
-```
+- Passwords encrypted and never logged
+- Temporary password always enabled for RESET_PASSWORD
+- Auto-generation of secure passwords (16 chars)
 
-### 📝 Exemple d'Utilisation
-
-#### Créer un Utilisateur
-
-1. Accéder à Jenkins → **Keycloak-User-Management**
-2. Cliquer sur **"Build with Parameters"**
-3. Remplir les paramètres:
-   - ACTION: `CREATE_USER`
-   - REALM: `internal`
-   - USERNAME: `jdoe`
-   - EMAIL: `john.doe@company.com`
-   - FIRST_NAME: `John`
-   - LAST_NAME: `Doe`
-   - GROUP_NAME: `Jenkins`
-   - PASSWORD: (laisser vide pour auto-génération)
-4. Cliquer sur **"Build"**
-
-**Résultat:**
-```
-✅ User created successfully with ID: abc-123-def
-📧 Username: jdoe
-📧 Email: john.doe@company.com
-🔑 Generated password: Xy9@mK4pQw2#L8vN
-⚠️  IMPORTANT: Save this password securely!
-👥 Adding user to group: Jenkins
-✅ User added to group 'Jenkins'
-```
-
-#### Réinitialiser un Mot de Passe
-
-1. ACTION: `RESET_PASSWORD`
-2. USERNAME: `jdoe`
-3. TEMPORARY_PASSWORD: `true`
-4. PASSWORD: (laisser vide pour auto-génération)
-
-**Résultat:**
-```
-✅ Password reset successfully
-🔑 New password: Np5&qT2xRw9@Km7L
-```
-
-### 🔒 Variables d'Environnement Utilisées
-
-```groovy
-environment {
-    KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
-    KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
-    KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
-}
-```
-
-### ⚠️ Gestion des Erreurs
-
-- **Username requis**: Erreur si ACTION nécessite username et il est vide
-- **Email requis**: Erreur si CREATE_USER sans email
-- **Token invalide**: Erreur si l'authentification échoue
-- **Utilisateur inexistant**: Erreur si UPDATE/DELETE d'un utilisateur qui n'existe pas
-
----
-
-## Pipeline 2: Employee Onboarding Webhook
-
-### 📄 Description
-
-Pipeline automatisé conçu pour être déclenché par un webhook externe (système RH, API, etc.). Il automatise complètement le processus d'onboarding des nouveaux employés en créant leur compte Keycloak, en les assignant aux bons groupes, et en envoyant un email de bienvenue.
-
-### 📍 Emplacement
-
-```
-Fichier: server/Jenkins/config/pipelines/employee-onboarding-webhook.jenkinsfile
-Job: Employee-Onboarding-Webhook
-```
-
-### 🎯 Fonctionnalités
-
-- ✅ **Création automatique de compte** avec validation des champs
-- 🔍 **Détection de doublon** - Met à jour si l'utilisateur existe déjà
-- 🎯 **Attribution automatique aux groupes** basée sur le département
-- 🔑 **Génération de mot de passe sécurisé** (16 caractères)
-- 📧 **Email de bienvenue** avec credentials (template HTML)
-- 📬 **Notification RH** après succès
-
-### 🌐 Configuration du Webhook
-
-#### URL du Webhook
-
-```
-POST http://jenkins.local:8080/generic-webhook-trigger/invoke?token=employee-onboarding-secret-token
-```
-
-#### Token de Sécurité
-
-```groovy
-token: 'employee-onboarding-secret-token'
-```
-
-⚠️ **Important:** Changer ce token en production!
-
-### 📦 Payload JSON
-
-```json
-{
-  "username": "jdoe",
-  "email": "john.doe@company.com",
-  "firstName": "John",
-  "lastName": "Doe",
-  "department": "IT",
-  "role": "developer",
-  "realm": "internal"
-}
-```
-
-#### Champs du Payload
-
-| Champ | Type | Obligatoire | Description |
-|-------|------|-------------|-------------|
-| `username` | string | ✅ | Identifiant unique de l'utilisateur |
-| `email` | string | ✅ | Adresse email professionnelle |
-| `firstName` | string | ❌ | Prénom de l'employé |
-| `lastName` | string | ❌ | Nom de famille de l'employé |
-| `department` | string | ❌ | Département (pour attribution groupe) |
-| `role` | string | ❌ | Rôle dans l'entreprise |
-| `realm` | string | ❌ | Realm Keycloak (défaut: `internal`) |
-
-### 🎯 Mapping Département → Groupe
-
-Le pipeline utilise une logique de mapping pour assigner automatiquement les utilisateurs aux bons groupes Keycloak:
-
-```groovy
-def groupMapping = [
-    'IT': 'IT',                    // Département IT → Groupe IT
-    'Engineering': 'IT',           // Engineering → Groupe IT
-    'DevOps': 'IT',                // DevOps → Groupe IT
-    'Development': 'Jenkins',      // Development → Groupe Jenkins
-    'QA': 'Jenkins',               // QA → Groupe Jenkins
-    'Support': 'Jenkins'           // Support → Groupe Jenkins
-]
-
-env.targetGroup = groupMapping[env.department] ?: 'Jenkins'  // Défaut: Jenkins
-```
-
-### 🔄 Flux d'Exécution
-
-```
-┌────────────────────────────────────────────┐
-│  TRIGGER: Webhook POST Request             │
-└────────────┬───────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  1. Load Keycloak Library                   │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  2. Parse Webhook Payload                   │
-│     - Extract username, email, etc.         │
-│     - Validate required fields              │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  3. Determine Group Assignment              │
-│     - Map department to Keycloak group      │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  4. Get Keycloak Access Token               │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  5. Check if User Exists                    │
-│     - Query Keycloak by username            │
-└────────────┬────────────────────────────────┘
-             │
-        ┌────┴────┐
-        │         │
-  User Exists   User Not Found
-        │         │
-        ▼         ▼
-   ┌────────┐  ┌────────────┐
-   │ UPDATE │  │   CREATE   │
-   │  USER  │  │    USER    │
-   └────┬───┘  └─────┬──────┘
-        │            │
-        └─────┬──────┘
-              │
-              ▼
-┌─────────────────────────────────────────────┐
-│  6. Assign to Group                         │
-│     - Add user to determined group          │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  7. Send Welcome Email (if new user)        │
-│     - HTML email with credentials           │
-└────────────┬────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────┐
-│  8. Notify HR                               │
-│     - Send completion notification          │
-└─────────────────────────────────────────────┘
-```
-
-### 📧 Template Email de Bienvenue
-
-```html
-<html>
-<body>
-    <h2>Welcome to the Company!</h2>
-    <p>Hello John Doe,</p>
-    <p>Your account has been created. Here are your login credentials:</p>
-    <ul>
-        <li><strong>Username:</strong> jdoe</li>
-        <li><strong>Temporary Password:</strong> Xy9@mK4pQw2#L8vN</li>
-        <li><strong>Login URL:</strong> http://keycloak:8080</li>
-    </ul>
-    <p><strong>Important:</strong> You will be required to change your password on first login.</p>
-    <p>You have been assigned to the <strong>IT</strong> group.</p>
-    <p>If you have any questions, please contact IT support.</p>
-    <br>
-    <p>Best regards,<br>IT Team</p>
-</body>
-</html>
-```
-
-### 📝 Exemple d'Utilisation
-
-#### Appel Webhook via cURL
+#### 📝 Exemple
 
 ```bash
-curl -X POST \
-  "http://jenkins.local:8080/generic-webhook-trigger/invoke?token=employee-onboarding-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "jdoe",
-    "email": "john.doe@company.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "department": "IT",
-    "role": "DevOps Engineer",
-    "realm": "internal"
-  }'
+# Créer un utilisateur
+ACTION: CREATE_USER
+USERNAME: jdoe
+EMAIL: john.doe@company.com
+FIRST_NAME: John
+LAST_NAME: Doe
+GROUP_NAME: Jenkins
+PASSWORD: (leave empty for auto-generation)
 ```
-
-#### Intégration avec Système RH (Python)
-
-```python
-import requests
-
-def onboard_employee(employee_data):
-    webhook_url = "http://jenkins.local:8080/generic-webhook-trigger/invoke"
-    params = {"token": "employee-onboarding-secret-token"}
-    
-    response = requests.post(
-        webhook_url,
-        params=params,
-        json=employee_data
-    )
-    
-    return response.status_code == 200
-
-# Utilisation
-employee = {
-    "username": "jdoe",
-    "email": "john.doe@company.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "department": "IT",
-    "role": "DevOps Engineer"
-}
-
-if onboard_employee(employee):
-    print("✅ Onboarding initiated successfully")
-else:
-    print("❌ Onboarding failed")
-```
-
-### 🔒 Sécurité
-
-- **Token requis**: Toutes les requêtes doivent inclure le token
-- **Validation des champs**: Username et email obligatoires
-- **Mot de passe sécurisé**: 16 caractères avec majuscules, minuscules, chiffres, caractères spéciaux
-- **Temporary password**: Changement obligatoire à la première connexion
 
 ---
 
-## Pipeline 3: Test Keycloak Integration
+### 2. Group Management Pipeline
 
-### 📄 Description
+**Pipeline:** `Keycloak/Keycloak-Group-Management`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-group-management.jenkinsfile`
 
-Suite de tests complète pour valider l'intégration entre Jenkins et Keycloak. Ce pipeline doit être exécuté après chaque modification de configuration pour garantir que tout fonctionne correctement.
+#### 📄 Description
 
-### 📍 Emplacement
+Gestion complète des groupes et de leurs membres avec support hiérarchique.
+
+#### 🎯 Actions Disponibles (9)
+
+1. **CREATE_GROUP** - Créer un nouveau groupe
+2. **UPDATE_GROUP** - Mettre à jour un groupe (nom, attributs)
+3. **DELETE_GROUP** - Supprimer un groupe
+4. **LIST_GROUPS** - Lister tous les groupes avec hiérarchie
+5. **GET_GROUP** - Afficher les détails d'un groupe
+6. **ADD_MEMBERS** - Ajouter des membres à un groupe
+7. **REMOVE_MEMBERS** - Retirer des membres d'un groupe
+8. **LIST_MEMBERS** - Lister les membres d'un groupe
+9. **DETECT_ORPHANS** - Trouver les groupes sans membres
+
+#### ⚙️ Paramètres Principaux
+
+| Paramètre | Type | Obligatoire | Description |
+|-----------|------|-------------|-------------|
+| ACTION | Choice | ✅ | Action à effectuer |
+| GROUP_NAME | String | ✅ | Nom du groupe |
+| NEW_GROUP_NAME | String | ❌ | Nouveau nom (UPDATE) |
+| PARENT_GROUP | String | ❌ | Groupe parent (hiérarchie) |
+| ATTRIBUTES | Text | ❌ | Attributs JSON |
+| USERNAMES | Text | ❌ | Liste d'utilisateurs (un par ligne) |
+| DRY_RUN | Boolean | ❌ | Mode test sans modification |
+
+#### 🌳 Features Avancées
+
+- **Hierarchical Groups** - Support parent/child relationships
+- **Custom Attributes** - JSON-based attribute management
+- **Bulk Operations** - Add/remove multiple members at once
+- **DRY_RUN Mode** - Preview changes before execution
+- **Confirmation Gates** - Manual approval for deletions
+
+#### 📝 Exemple
+
+```bash
+# Créer un groupe avec attributs
+ACTION: CREATE_GROUP
+GROUP_NAME: DevOps-Team
+ATTRIBUTES: {"department": "IT", "cost_center": "1234"}
+
+# Ajouter plusieurs membres
+ACTION: ADD_MEMBERS
+GROUP_NAME: DevOps-Team
+USERNAMES:
+jdoe
+asmith
+mjones
+```
+
+---
+
+### 3. Client Management Pipeline
+
+**Pipeline:** `Keycloak/Keycloak-Client-Management`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-client-management.jenkinsfile`
+
+#### 📄 Description
+
+Gestion complète des clients OAuth2/OIDC avec support de templates prédéfinis.
+
+#### 🎯 Actions Disponibles (10)
+
+1. **CREATE_CLIENT** - Créer un client personnalisé
+2. **CREATE_FROM_TEMPLATE** - Créer depuis un template
+3. **UPDATE_CLIENT** - Mettre à jour la configuration
+4. **DELETE_CLIENT** - Supprimer un client
+5. **LIST_CLIENTS** - Lister tous les clients
+6. **GET_CLIENT** - Afficher les détails d'un client
+7. **GET_CLIENT_SECRET** - Récupérer le secret
+8. **REGENERATE_SECRET** - Générer un nouveau secret
+9. **ENABLE_CLIENT** - Activer un client
+10. **DISABLE_CLIENT** - Désactiver un client
+
+#### 📋 Templates Disponibles
+
+| Template | Type | PKCE | Service Account | Use Case |
+|----------|------|------|-----------------|----------|
+| **SPA** | Public | ✅ | ❌ | Single Page Applications |
+| **WEB_APP** | Confidential | ❌ | ❌ | Traditional web apps |
+| **BACKEND_SERVICE** | Confidential | ❌ | ✅ | Service-to-service |
+| **MOBILE_APP** | Public | ✅ | ❌ | Mobile applications |
+
+#### ⚙️ Paramètres Principaux
+
+| Paramètre | Type | Obligatoire | Description |
+|-----------|------|-------------|-------------|
+| ACTION | Choice | ✅ | Action à effectuer |
+| CLIENT_ID | String | ✅ | ID du client |
+| CLIENT_NAME | String | ❌ | Nom d'affichage |
+| TEMPLATE | Choice | ❌ | Template à utiliser |
+| REDIRECT_URIS | Text | ❌ | URIs de redirection (une par ligne) |
+| WEB_ORIGINS | Text | ❌ | Origines web autorisées |
+| PUBLIC_CLIENT | Boolean | ❌ | Client public ou confidentiel |
+
+#### 🔒 Sécurité
+
+- Automatic secret generation for confidential clients
+- Secret masking in logs (only last 4 characters shown)
+- Confirmation required for secret regeneration
+- DRY_RUN mode for testing
+
+#### 📝 Exemple
+
+```bash
+# Créer une SPA depuis template
+ACTION: CREATE_FROM_TEMPLATE
+CLIENT_ID: my-react-app
+CLIENT_NAME: My React Application
+TEMPLATE: SPA
+REDIRECT_URIS:
+https://myapp.com/*
+http://localhost:3000/*
+WEB_ORIGINS:
+https://myapp.com
+http://localhost:3000
+```
+
+---
+
+### 4. Session Management Pipeline
+
+**Pipeline:** `Keycloak/Keycloak-Session-Management`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-session-management.jenkinsfile`
+
+#### 📄 Description
+
+Monitoring et contrôle des sessions utilisateurs avec détection d'anomalies.
+
+#### 🎯 Actions Disponibles (6)
+
+1. **SESSION_STATISTICS** - Statistiques globales des sessions
+2. **LIST_ACTIVE_SESSIONS** - Lister toutes les sessions actives
+3. **LIST_USER_SESSIONS** - Sessions d'un utilisateur spécifique
+4. **DETECT_ANOMALIES** - Détecter les sessions suspectes
+5. **REVOKE_USER_SESSIONS** - Révoquer les sessions d'un utilisateur
+6. **REVOKE_ALL_SESSIONS** - Révoquer TOUTES les sessions (urgence)
+
+#### 📊 Métriques Fournies
+
+- Total active sessions
+- Unique users count
+- Unique clients count
+- Average session age
+- Sessions per user
+- Longest session duration
+
+#### ⚙️ Paramètres Principaux
+
+| Paramètre | Type | Obligatoire | Description |
+|-----------|------|-------------|-------------|
+| ACTION | Choice | ✅ | Action à effectuer |
+| USERNAME | String | ❌ | Utilisateur cible |
+| ANOMALY_THRESHOLD_HOURS | String | ❌ | Seuil de détection (heures) |
+| CONFIRM_REVOKE_ALL | Boolean | ❌ | Confirmation double pour REVOKE_ALL |
+
+#### 🚨 Détection d'Anomalies
+
+Détecte les sessions suspectes basées sur :
+- **Long-lived sessions** - Sessions dépassant le seuil configuré
+- **Multiple IPs** - Utilisateur connecté depuis plusieurs IPs
+- **Unusual patterns** - Comportements inhabituels
+
+#### 🔒 Sécurité
+
+- Double confirmation for REVOKE_ALL_SESSIONS
+- Emergency mode for fast-track revocation
+- Notification support (email/webhook)
+- Audit logging of all revocations
+
+#### 📝 Exemple
+
+```bash
+# Détecter les anomalies
+ACTION: DETECT_ANOMALIES
+ANOMALY_THRESHOLD_HOURS: 24
+
+# Révoquer les sessions d'un utilisateur
+ACTION: REVOKE_USER_SESSIONS
+USERNAME: jdoe
+```
+
+---
+
+## Pipelines de Reporting
+
+### 5. Security Audit Pipeline
+
+**Pipeline:** `Keycloak/Keycloak-Security-Audit`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-security-audit.jenkinsfile`
+
+#### 📄 Description
+
+Audit de sécurité complet du realm Keycloak avec génération de rapports.
+
+#### 🔍 Vérifications Effectuées (9)
+
+1. **Unverified Emails** - Utilisateurs avec emails non vérifiés
+2. **Disabled Accounts** - Comptes désactivés
+3. **Missing Emails** - Utilisateurs sans adresse email
+4. **Weak Password Policies** - Politiques de mots de passe faibles
+5. **Public Clients without PKCE** - Clients publics non sécurisés
+6. **Wildcard Redirect URIs** - URIs de redirection avec wildcards
+7. **Service Accounts** - Configuration des comptes de service
+8. **Long-lived Sessions** - Sessions actives trop longues
+9. **Orphaned Groups** - Groupes sans membres
+
+#### 📄 Formats de Sortie
+
+- **HTML Report** - Rapport visuel avec graphiques
+- **JSON Export** - Données structurées pour analyse
+- **CSV Export** - Import dans Excel/Google Sheets
+
+#### ⚙️ Paramètres
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| EXPORT_FORMAT | Choice | HTML, JSON, CSV |
+| INCLUDE_RECOMMENDATIONS | Boolean | Inclure les recommandations |
+| EMAIL_REPORT | Boolean | Envoyer par email |
+
+#### 📝 Exemple de Sortie
 
 ```
-Fichier: server/Jenkins/config/pipelines/test-keycloak-integration.jenkinsfile
-Job: Test-Keycloak-Integration
+=== SECURITY AUDIT REPORT ===
+Date: 2025-10-18 14:30:00
+Realm: internal
+
+FINDINGS:
+[HIGH] 5 users with unverified emails
+[MEDIUM] 2 public clients without PKCE
+[LOW] 3 orphaned groups
+
+RECOMMENDATIONS:
+- Enable email verification for all users
+- Enable PKCE for public clients: app1, app2
+- Remove or populate orphaned groups
 ```
 
-### 🎯 Tests Exécutés
+---
 
-#### Test 1: Keycloak Connectivity ✅
-- Vérifie que Keycloak est accessible
-- Teste le endpoint `.well-known/openid-configuration`
-- Valide le code HTTP 200
+### 6. Compliance Report Pipeline
 
-#### Test 2: Service Account Authentication 🔐
-- Obtient un access token via client credentials
-- Valide le token avec l'endpoint introspection
-- Vérifie que le token est actif
+**Pipeline:** `Keycloak/Keycloak-Compliance-Report`  
+**Fichier:** `server/jenkins/config/pipelines/keycloak-compliance-report.jenkinsfile`
 
-#### Test 3: List Users 📋
-- Liste les utilisateurs du realm
-- Vérifie que l'API retourne des données
-- Affiche les 5 premiers utilisateurs
+#### 📄 Description
 
-#### Test 4: Create Test User 👤
-- Crée un utilisateur avec username unique (test-jenkins-{BUILD_NUMBER})
-- Assigne un mot de passe temporaire
-- Valide la création avec un ID retourné
+Génération de rapports de conformité pour audits et gouvernance.
 
-#### Test 5: Update Test User ✏️
-- Met à jour le prénom/nom de l'utilisateur test
-- Marque l'email comme vérifié
-- Valide que les modifications sont appliquées
+#### 📊 Types de Rapports (6)
 
-#### Test 6: Reset Password 🔑
-- Génère un nouveau mot de passe sécurisé
-- Réinitialise le mot de passe de l'utilisateur test
-- Configure en mode non-temporaire
+1. **FULL_COMPLIANCE** - Vue d'ensemble complète de la conformité
+2. **ACCESS_REVIEW** - Audit des accès utilisateurs et groupes
+3. **PRIVILEGED_ACCOUNTS** - Revue des comptes admin et service
+4. **PASSWORD_POLICY** - Conformité des politiques de mots de passe
+5. **CLIENT_SECRETS_AUDIT** - Audit de la gestion des secrets clients
+6. **MFA_ADOPTION** - Taux d'adoption de l'authentification multi-facteurs
 
-#### Test 7: Add to Group 👥
-- Ajoute l'utilisateur test au groupe "Jenkins"
-- Valide l'attribution (ou note si le groupe n'existe pas)
+#### ⚙️ Paramètres
 
-#### Test 8: Delete Test User 🗑️
-- Supprime l'utilisateur test créé
-- Nettoie les données de test
-- Valide la suppression
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| REPORT_TYPE | Choice | Type de rapport à générer |
+| EXPORT_FORMAT | Choice | HTML, JSON, CSV |
+| EMAIL_RECIPIENTS | Text | Destinataires email (un par ligne) |
+| ARCHIVE_REPORT | Boolean | Archiver dans Jenkins |
 
-### ⚙️ Paramètres
+#### 📝 Exemple de Rapport ACCESS_REVIEW
 
-| Paramètre | Type | Valeurs | Description |
-|-----------|------|---------|-------------|
-| **REALM** | Choice | `internal` | Realm Keycloak à tester |
+```
+=== ACCESS REVIEW REPORT ===
+Generated: 2025-10-18 14:30:00
 
-### 🔄 Variables d'Environnement
+USERS: 45 total
+- Active: 42
+- Disabled: 3
+- Unverified: 5
+
+GROUPS: 12 total
+- IT: 15 members
+- Jenkins: 8 members
+- DevOps: 12 members
+
+PRIVILEGED ACCOUNTS: 3
+- admin (last login: 2 days ago)
+- jenkins-automation (service account)
+- backup-service (service account)
+```
+
+---
+
+## Pipelines de Test
+
+### Vue d'ensemble des Tests
+
+**Total:** 42 integration tests  
+**Coverage:** 100% CRUD operations  
+**Cleanup:** Automatic (build-specific resources)
+
+| Pipeline | Tests | Duration | Coverage |
+|----------|-------|----------|----------|
+| Test User Management | 7 | ~5 min | CREATE, UPDATE, RESET_PASSWORD, ADD_TO_GROUP, LIST, DELETE |
+| Test Group Management | 8 | ~6 min | CREATE, CREATE_SUBGROUP, GET, ADD_MEMBERS, LIST_MEMBERS, UPDATE, REMOVE_MEMBERS, DELETE |
+| Test Client Management | 8 | ~5 min | CREATE, CREATE_FROM_TEMPLATE, GET, GET_SECRET, UPDATE, REGENERATE_SECRET, ENABLE/DISABLE, DELETE |
+| Test Session Management | 6 | ~4 min | STATISTICS, LIST_ALL, LIST_USER, DETECT_ANOMALIES, REVOKE_USER, VERIFY |
+
+### 7. User Management Tests
+
+**Pipeline:** `Keycloak/Test-Keycloak-User-Management`  
+**Fichier:** `server/jenkins/config/pipelines/test-keycloak-user-management.jenkinsfile`
+
+#### Tests Effectués (7)
+
+1. ✅ Create user with password
+2. ✅ Update user details
+3. ✅ Reset password
+4. ✅ Add user to group
+5. ✅ List users
+6. ✅ Delete user
+7. ✅ Cleanup and rollback
+
+---
+
+### 8. Group Management Tests
+
+**Pipeline:** `Keycloak/Test-Keycloak-Group-Management`  
+**Fichier:** `server/jenkins/config/pipelines/test-keycloak-group-management.jenkinsfile`
+
+#### Tests Effectués (8)
+
+1. ✅ Create group with attributes
+2. ✅ Create subgroup (hierarchy)
+3. ✅ Get group details
+4. ✅ Add members to group
+5. ✅ List group members
+6. ✅ Update group
+7. ✅ Remove members from group
+8. ✅ Delete group and cleanup
+
+---
+
+### 9. Client Management Tests
+
+**Pipeline:** `Keycloak/Test-Keycloak-Client-Management`  
+**Fichier:** `server/jenkins/config/pipelines/test-keycloak-client-management.jenkinsfile`
+
+#### Tests Effectués (8)
+
+1. ✅ Create confidential client
+2. ✅ Create client from template (SPA)
+3. ✅ Get client details
+4. ✅ Get client secret
+5. ✅ Update client configuration
+6. ✅ Regenerate client secret
+7. ✅ Enable/disable client
+8. ✅ Delete client and cleanup
+
+---
+
+### 10. Session Management Tests
+
+**Pipeline:** `Keycloak/Test-Keycloak-Session-Management`  
+**Fichier:** `server/jenkins/config/pipelines/test-keycloak-session-management.jenkinsfile`
+
+#### Tests Effectués (6)
+
+1. ✅ Get session statistics
+2. ✅ List all active sessions
+3. ✅ List user sessions
+4. ✅ Detect anomalies
+5. ✅ Revoke user sessions
+6. ✅ Verify session revocation
+
+---
+
+## Shared Library Reference
+
+### Modules Disponibles (6)
+
+| Module | Lignes | Fonctions | Description |
+|--------|--------|-----------|-------------|
+| `keycloakAuth.groovy` | 80 | 2 | Authentication & token management |
+| `keycloakUser.groovy` | 403 | 6 | User CRUD operations |
+| `keycloakGroup.groovy` | 550 | 9 | Group & membership management |
+| `keycloakClient.groovy` | 527 | 10 | Client management |
+| `keycloakSession.groovy` | 420 | 6 | Session monitoring & control |
+| `keycloakAudit.groovy` | 380 | 15 | Audit & compliance functions |
+
+### Utilisation dans les Pipelines
 
 ```groovy
-environment {
-    KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
-    KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
-    KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
-    TEST_USERNAME = "test-jenkins-${BUILD_NUMBER}"
-    TEST_EMAIL = "test-jenkins-${BUILD_NUMBER}@example.local"
-}
-```
+@Library('keycloak-lib') _
 
-### 📊 Sortie de Console Exemple
-
-```
-================================================================================
-TEST 1: Checking Keycloak connectivity...
-================================================================================
-✅ Keycloak is accessible
-
-================================================================================
-TEST 2: Testing service account authentication...
-================================================================================
-✅ Successfully obtained access token
-✅ Token is valid
-
-================================================================================
-TEST 3: Testing user listing...
-================================================================================
-✅ Successfully retrieved users
-   Total users: 15
-
-   Sample users:
-  - admin (admin@company.local)
-  - jdoe (john.doe@company.com)
-  - asmith (alice.smith@company.com)
-
-================================================================================
-TEST 4: Testing user creation...
-================================================================================
-✅ User created successfully
-   User ID: 123e4567-e89b-12d3-a456-426614174000
-   Username: test-jenkins-42
-   Email: test-jenkins-42@example.local
-
-================================================================================
-TEST 5: Testing user update...
-================================================================================
-✅ User updated successfully
-
-================================================================================
-TEST 6: Testing password reset...
-================================================================================
-✅ Password reset successfully
-   New password: Np5&qT2xRw9@Km7L
-
-================================================================================
-TEST 7: Testing group assignment...
-================================================================================
-✅ User added to group successfully
-
-================================================================================
-TEST 8: Testing user deletion (cleanup)...
-================================================================================
-✅ Test user deleted successfully
-
-================================================================================
-🎉 ALL TESTS PASSED!
-================================================================================
-
-✅ Keycloak connectivity
-✅ Service account authentication
-✅ Token validation
-✅ List users
-✅ Create user
-✅ Update user
-✅ Reset password
-✅ Add to group (if group exists)
-✅ Delete user
-
-The Keycloak integration is working correctly!
-You can now use the automation pipelines safely.
-================================================================================
-```
-
-### 🧹 Nettoyage Automatique
-
-Le pipeline inclut un bloc `post.always` qui nettoie automatiquement l'utilisateur test même en cas d'échec:
-
-```groovy
-post {
-    always {
-        script {
-            // Clean up sensitive data
-            env.ACCESS_TOKEN = null
-            
-            // Try to clean up test user if it still exists
-            try {
-                if (env.TEST_USER_ID) {
-                    echo "🧹 Cleaning up test user (if exists)..."
-                    keycloakUser.deleteUser(...)
+pipeline {
+    agent any
+    
+    stages {
+        stage('Get Token') {
+            steps {
+                script {
+                    def token = keycloakAuth.getAccessToken(
+                        KC_URL_INTERNAL,
+                        KC_CLIENT_ID,
+                        KC_CLIENT_SECRET
+                    )
                 }
-            } catch (Exception e) {
-                echo "Note: Test user cleanup skipped (may already be deleted)"
+            }
+        }
+        
+        stage('Create User') {
+            steps {
+                script {
+                    keycloakUser.createUser(
+                        token,
+                        KC_URL_INTERNAL,
+                        'internal',
+                        'jdoe',
+                        'john.doe@company.com',
+                        'John',
+                        'Doe'
+                    )
+                }
             }
         }
     }
 }
 ```
 
-### 📝 Quand Exécuter ce Pipeline?
-
-- ✅ **Après le premier déploiement** - Valider la configuration initiale
-- ✅ **Après modification de jenkins.yaml** - Vérifier l'authentification OIDC
-- ✅ **Après changement de realm** - Tester le nouveau realm
-- ✅ **En cas de problème** - Diagnostiquer les erreurs d'intégration
-- ✅ **Avant la production** - Garantir que tout fonctionne
-
----
-
-## Utilisation des Pipelines
-
-### Accès via Interface Web
-
-1. **Accéder à Jenkins:**
-   ```
-   http://jenkins.local:8080
-   ```
-
-2. **Se connecter:**
-   - Cliquer sur "Login with Keycloak"
-   - Utiliser les credentials Keycloak
-
-3. **Lancer un Pipeline:**
-   - Cliquer sur le nom du pipeline
-   - Pour pipelines paramétrés: "Build with Parameters"
-   - Pour tests: "Build Now"
-
-### Organisation par Vues
-
-Les pipelines sont automatiquement organisés dans des vues:
-
-#### Vue "Keycloak Management"
-- Keycloak-User-Management
-- Employee-Onboarding-Webhook
-
-#### Vue "Integration Tests"
-- Test-Keycloak-Integration
-
-### Permissions Requises
-
-| Action | Groupe IT | Groupe Jenkins |
-|--------|-----------|----------------|
-| Voir les pipelines | ✅ | ✅ |
-| Lancer un build | ✅ | ✅ |
-| Configurer un pipeline | ✅ | ❌ |
-| Supprimer un pipeline | ✅ | ❌ |
-
 ---
 
 ## Exemples d'Utilisation
 
-### Scénario 1: Onboarding Manuel
+### Scénario 1: Onboarding d'un Nouvel Employé
 
-**Contexte:** Un nouveau développeur rejoint l'équipe IT
-
-**Étapes:**
-1. Accéder à Jenkins → Keycloak-User-Management
-2. Build with Parameters:
-   - ACTION: `CREATE_USER`
-   - USERNAME: `jsmith`
-   - EMAIL: `james.smith@company.com`
-   - FIRST_NAME: `James`
-   - LAST_NAME: `Smith`
-   - GROUP_NAME: `IT`
-   - EMAIL_VERIFIED: `true`
-3. Build → L'utilisateur est créé avec un mot de passe généré
-
-### Scénario 2: Onboarding Automatisé via RH
-
-**Contexte:** Le système RH déclenche automatiquement la création de compte
-
-**Flux:**
-```
-Système RH → Webhook → Jenkins → Keycloak
-```
-
-**Webhook POST:**
 ```bash
-curl -X POST \
-  "http://jenkins.local:8080/generic-webhook-trigger/invoke?token=employee-onboarding-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "jsmith",
-    "email": "james.smith@company.com",
-    "firstName": "James",
-    "lastName": "Smith",
-    "department": "IT",
-    "role": "Developer"
-  }'
-```
+# 1. Créer l'utilisateur
+Pipeline: Keycloak-User-Management
+ACTION: CREATE_USER
+USERNAME: jdoe
+EMAIL: john.doe@company.com
+FIRST_NAME: John
+LAST_NAME: Doe
+GROUP_NAME: IT
 
-**Résultat:**
-- Compte créé automatiquement
-- Assigné au groupe IT
-- Email de bienvenue envoyé
-- RH notifié
+# 2. Ajouter à des groupes supplémentaires
+Pipeline: Keycloak-Group-Management
+ACTION: ADD_MEMBERS
+GROUP_NAME: Jenkins
+USERNAMES: jdoe
 
-### Scénario 3: Diagnostic de Problème
-
-**Contexte:** L'authentification Keycloak ne fonctionne pas
-
-**Étapes:**
-1. Lancer Test-Keycloak-Integration
-2. Vérifier quelle étape échoue:
-   - Test 1 failed → Problème réseau/connectivité
-   - Test 2 failed → Credentials invalides
-   - Test 4 failed → Permissions insuffisantes
-3. Corriger la configuration
-4. Relancer le test
-
----
-
-## 🔧 Personnalisation
-
-### Modifier le Mapping Département → Groupe
-
-Éditer `employee-onboarding-webhook.jenkinsfile`:
-
-```groovy
-def groupMapping = [
-    'IT': 'IT',
-    'Engineering': 'IT',
-    'HR': 'HR',              // Ajouter nouveau mapping
-    'Finance': 'Finance',    // Ajouter nouveau mapping
-    'Sales': 'Sales'         // Ajouter nouveau mapping
-]
-```
-
-### Changer le Token Webhook
-
-Éditer `employee-onboarding-webhook.jenkinsfile`:
-
-```groovy
-token: 'your-secure-token-here'
-```
-
-### Modifier le Template Email
-
-Éditer la section "Send Welcome Email":
-
-```groovy
-def emailBody = """
-<html>
-<body>
-    <!-- Votre template HTML personnalisé -->
-</body>
-</html>
-"""
+# 3. Créer un client pour son application
+Pipeline: Keycloak-Client-Management
+ACTION: CREATE_FROM_TEMPLATE
+CLIENT_ID: jdoe-dev-app
+TEMPLATE: SPA
 ```
 
 ---
 
-## 📚 Ressources
+### Scénario 2: Audit de Sécurité Mensuel
 
-- [Keycloak Admin REST API](https://www.keycloak.org/docs-api/latest/rest-api/index.html)
-- [Generic Webhook Trigger Plugin](https://plugins.jenkins.io/generic-webhook-trigger/)
-- [Jenkins Pipeline Syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
-- [SHARED_LIBRARY.md](./SHARED_LIBRARY.md) - Documentation de la bibliothèque Keycloak
+```bash
+# 1. Générer le rapport de sécurité
+Pipeline: Keycloak-Security-Audit
+EXPORT_FORMAT: HTML
+EMAIL_REPORT: true
+
+# 2. Générer le rapport de conformité
+Pipeline: Keycloak-Compliance-Report
+REPORT_TYPE: FULL_COMPLIANCE
+EXPORT_FORMAT: HTML
+ARCHIVE_REPORT: true
+
+# 3. Vérifier les sessions suspectes
+Pipeline: Keycloak-Session-Management
+ACTION: DETECT_ANOMALIES
+ANOMALY_THRESHOLD_HOURS: 48
+```
 
 ---
 
-**⬅️ Retour au [README](./README.md)**
+### Scénario 3: Incident de Sécurité
+
+```bash
+# 1. Détecter les anomalies
+Pipeline: Keycloak-Session-Management
+ACTION: DETECT_ANOMALIES
+
+# 2. Révoquer les sessions d'un utilisateur compromis
+Pipeline: Keycloak-Session-Management
+ACTION: REVOKE_USER_SESSIONS
+USERNAME: compromised-user
+
+# 3. Désactiver le compte
+Pipeline: Keycloak-User-Management
+ACTION: UPDATE_USER
+USERNAME: compromised-user
+ENABLED: false
+
+# 4. Générer un rapport d'audit
+Pipeline: Keycloak-Security-Audit
+EXPORT_FORMAT: JSON
+```
+
+---
+
+### Scénario 4: Validation Avant Production
+
+```bash
+# Exécuter tous les tests d'intégration
+1. Test-Keycloak-User-Management
+2. Test-Keycloak-Group-Management
+3. Test-Keycloak-Client-Management
+4. Test-Keycloak-Session-Management
+
+# Vérifier: 42/42 tests passed ✅
+```
+
+---
+
+## 🔧 Configuration Requise
+
+### Variables d'Environnement
+
+```bash
+KC_URL_INTERNAL=keycloak:8080
+KC_CLIENT_ID_JENKINS_AUTOMATION=jenkins-automation
+KC_SECRET_JENKINS_AUTOMATION=<secret>
+KC_REALM=internal
+```
+
+### Permissions Keycloak Requises
+
+Le service account `jenkins-automation` doit avoir les rôles suivants dans `realm-management`:
+
+- `manage-users`
+- `view-users`
+- `manage-clients`
+- `view-clients`
+- `query-clients`
+- `query-groups`
+- `query-users`
+
+---
+
+## 📚 Documentation Additionnelle
+
+- **SHARED_LIBRARY.md** - API Reference complète de la bibliothèque partagée
+- **SECURITY.md** - Guide de sécurité et best practices
+- **TROUBLESHOOTING.md** - Guide de dépannage
+- **CHANGELOG.md** - Historique des versions
+
+---
+
+**Version:** v0.2.0  
+**Last Updated:** October 18, 2025  
+**Maintainer:** DevOps Team

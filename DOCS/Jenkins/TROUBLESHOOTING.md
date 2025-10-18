@@ -1,10 +1,18 @@
-# 🛠️ Dépannage Jenkins - Guide de Résolution
+# 🛠️ Dépannage Jenkins - Guide de Résolution v0.2.0
+
+**Version:** v0.2.0 - Keycloak Management Automation Suite  
+**Date:** October 18, 2025
 
 ## 📋 Table des Matières
 
 - [Problèmes de Démarrage](#problèmes-de-démarrage)
 - [Authentification OIDC](#authentification-oidc)
-- [Pipelines](#pipelines)
+- [Pipelines v0.2.0](#pipelines-v020)
+  - [Erreurs Communes](#erreurs-communes)
+  - [Service Account](#service-account)
+  - [JSON Parsing](#json-parsing)
+  - [Password Parameters](#password-parameters)
+  - [Tests d'Intégration](#tests-dintégration)
 - [Intégration Keycloak](#intégration-keycloak)
 - [Performance](#performance)
 - [Docker](#docker)
@@ -210,7 +218,271 @@ authorizationStrategy:
 
 ---
 
-## Pipelines
+## Pipelines v0.2.0
+
+### 🆕 Erreurs Communes v0.2.0
+
+#### ❌ "Cannot parse the JSON" Error
+
+**Symptômes:**
+```
+Error: Cannot parse the JSON
+HTTP 400 Bad Request from Keycloak
+```
+
+**Cause:**
+Caractères spéciaux dans le JSON cassent le parsing shell lors de l'utilisation de `-d '${json}'`
+
+**Solution:**
+✅ **FIXÉ dans v0.2.0** - Utilisation de fichiers temporaires au lieu de JSON inline
+
+```groovy
+// ❌ ANCIEN (v0.1.0) - Causait des erreurs
+sh """
+    curl -X POST ... -d '${jsonPayload}'
+"""
+
+// ✅ NOUVEAU (v0.2.0) - Fonctionne correctement
+def tmpFile = "/tmp/payload_${BUILD_NUMBER}.json"
+writeFile file: tmpFile, text: jsonPayload
+sh """
+    curl -X POST ... -d @${tmpFile}
+"""
+sh "rm -f ${tmpFile}"
+```
+
+---
+
+#### ❌ Password Parameter Returns Encrypted Object
+
+**Symptômes:**
+```
+Password: {encryptedValue: "...", plainText: "..."}
+API rejects password format
+```
+
+**Cause:**
+Jenkins password parameters retournent un objet au lieu d'une string
+
+**Solution:**
+✅ **FIXÉ dans v0.2.0** - Conversion explicite avec `.toString()`
+
+```groovy
+// ❌ ANCIEN - Objet encrypted
+def pwd = params.PASSWORD
+
+// ✅ NOUVEAU - String utilisable
+def pwd = params.PASSWORD.toString()
+```
+
+---
+
+#### ❌ Sandbox Security: RejectedAccessException
+
+**Symptômes:**
+```
+RejectedAccessException: Scripts not permitted to use method net.sf.json.JSONArray join
+```
+
+**Cause:**
+Jenkins sandbox bloque `.join()` sur les objets JSONArray
+
+**Solution:**
+✅ **FIXÉ dans v0.2.0** - Remplacement par `.collect()` et `.each()`
+
+```groovy
+// ❌ ANCIEN - Bloqué par sandbox
+def uris = redirectUris.join(',')
+
+// ✅ NOUVEAU - Compatible sandbox
+def uriList = []
+redirectUris.each { uri ->
+    uriList.add(uri)
+}
+```
+
+---
+
+#### ❌ MissingPropertyException: No such property: parameters
+
+**Symptômes:**
+```
+MissingPropertyException: No such property: parameters
+Error in post.always block
+```
+
+**Cause:**
+Code de cleanup invalide tentant d'accéder à `parameters` dans le bloc post
+
+**Solution:**
+✅ **FIXÉ dans v0.2.0** - Suppression du code de cleanup invalide
+
+```groovy
+post {
+    always {
+        script {
+            // ❌ ANCIEN - Causait MissingPropertyException
+            // parameters.each { key, value -> 
+            //     env[key] = null
+            // }
+            
+            // ✅ NOUVEAU - Cleanup correct
+            ACCESS_TOKEN = null
+        }
+    }
+}
+```
+
+---
+
+### 🔐 Service Account Issues
+
+#### ❌ "Insufficient permissions" Error
+
+**Symptômes:**
+```
+403 Forbidden
+User 'service-account-jenkins-automation' lacks permissions
+```
+
+**Diagnostic:**
+```bash
+# Vérifier les rôles du service account
+Keycloak Admin Console
+→ Clients → jenkins-automation
+→ Service Account Roles
+→ Client Roles → realm-management
+```
+
+**Solution:**
+Assigner les rôles requis:
+
+```
+Required Roles (realm-management):
+✅ manage-users
+✅ view-users
+✅ manage-clients
+✅ view-clients
+✅ query-clients
+✅ query-groups
+✅ query-users
+```
+
+**Test:**
+```bash
+# Tester avec le pipeline de test
+Pipeline: Test-Keycloak-User-Management
+```
+
+---
+
+#### ❌ Token Expired
+
+**Symptômes:**
+```
+401 Unauthorized
+Token expired
+```
+
+**Cause:**
+Les tokens expirent après 5 minutes
+
+**Solution:**
+✅ Les pipelines obtiennent un nouveau token à chaque exécution
+
+```groovy
+// Token obtenu au début de chaque pipeline
+stage('Get Token') {
+    steps {
+        script {
+            ACCESS_TOKEN = keycloakAuth.getAccessToken(...)
+        }
+    }
+}
+```
+
+---
+
+### 🧪 Tests d'Intégration
+
+#### ❌ Tests Failing: Resource Already Exists
+
+**Symptômes:**
+```
+Error: User test-user-12345 already exists
+Test failed: CREATE operation
+```
+
+**Cause:**
+Cleanup incomplet d'une exécution précédente
+
+**Solution:**
+```bash
+# 1. Nettoyer manuellement
+Pipeline: Keycloak-User-Management
+ACTION: DELETE_USER
+USERNAME: test-user-12345
+
+# 2. Re-exécuter le test
+Pipeline: Test-Keycloak-User-Management
+```
+
+**Prévention:**
+Les tests utilisent `BUILD_NUMBER` pour des noms uniques:
+```groovy
+def testUsername = "test-user-${BUILD_NUMBER}"
+```
+
+---
+
+#### ❌ All Tests Failing
+
+**Symptômes:**
+```
+42/42 tests failed
+Cannot connect to Keycloak
+```
+
+**Diagnostic:**
+```bash
+# 1. Vérifier connectivité Keycloak
+docker exec jenkins curl -I http://keycloak:8080
+
+# 2. Vérifier variables d'environnement
+docker exec jenkins env | grep KC_
+```
+
+**Solution:**
+```bash
+# Vérifier configuration Jenkins
+KC_URL_INTERNAL=keycloak:8080
+KC_CLIENT_ID_JENKINS_AUTOMATION=jenkins-automation
+KC_SECRET_JENKINS_AUTOMATION=<secret>
+```
+
+---
+
+### 📝 DRY_RUN Mode Issues
+
+#### ❌ DRY_RUN Not Working
+
+**Symptômes:**
+```
+DRY_RUN=true but changes were applied
+```
+
+**Cause:**
+Certaines actions ne supportent pas DRY_RUN
+
+**Actions supportant DRY_RUN:**
+- ✅ DELETE_GROUP
+- ✅ DELETE_USER
+- ✅ DELETE_CLIENT
+- ✅ REVOKE_USER_SESSIONS
+- ❌ CREATE operations (pas de sens en DRY_RUN)
+- ❌ LIST operations (read-only)
+
+---
 
 ### ❌ Pipelines non créés au démarrage
 

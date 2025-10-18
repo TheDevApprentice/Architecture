@@ -88,6 +88,8 @@
 
 ### Client: jenkins-automation
 
+**Version:** v0.2.0 - Service account pour l'automation Keycloak via Jenkins
+
 ```json
 {
   "clientId": "jenkins-automation",
@@ -97,16 +99,39 @@
   "standardFlowEnabled": false,
   "directAccessGrantsEnabled": false,
   "serviceAccountsEnabled": true,
+  "authorizationServicesEnabled": false,
+  "description": "Service account for Jenkins automation pipelines (v0.2.0)",
   "serviceAccountsRoles": {
     "realm-management": [
       "manage-users",
       "view-users",
+      "manage-clients",
+      "view-clients",
+      "query-clients",
       "query-groups",
       "query-users"
     ]
   }
 }
 ```
+
+**Permissions (v0.2.0):**
+- ✅ `manage-users` - Créer/modifier/supprimer utilisateurs (User Management)
+- ✅ `view-users` - Consulter utilisateurs (User Management, Audit)
+- ✅ `manage-clients` - Créer/modifier/supprimer clients (Client Management)
+- ✅ `view-clients` - Consulter clients (Client Management, Audit)
+- ✅ `query-clients` - Rechercher clients (Client Management)
+- ✅ `query-groups` - Rechercher groupes (Group Management)
+- ✅ `query-users` - Rechercher utilisateurs (All Pipelines)
+
+**Pipelines Utilisant ce Service Account:**
+- Keycloak-User-Management (6 actions)
+- Keycloak-Group-Management (9 actions)
+- Keycloak-Client-Management (10 actions)
+- Keycloak-Session-Management (6 actions)
+- Keycloak-Security-Audit (9 checks)
+- Keycloak-Compliance-Report (6 report types)
+- Test Pipelines (42 integration tests)
 
 ### Client: minio
 

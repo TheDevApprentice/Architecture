@@ -1,13 +1,32 @@
-# 🔐 Sécurité Jenkins - Guide Complet
+# 🔐 Sécurité Jenkins - Guide Complet v0.2.0
+
+**Version:** v0.2.0 - Keycloak Management Automation Suite  
+**Date:** October 18, 2025
 
 ## 📋 Table des Matières
 
 - [Authentification OIDC](#authentification-oidc)
+- [Service Accounts](#service-accounts)
+- [Gestion des Secrets dans les Pipelines](#gestion-des-secrets-dans-les-pipelines)
 - [Autorisation Matrix](#autorisation-matrix)
-- [Gestion des Secrets](#gestion-des-secrets)
 - [Sécurisation Docker](#sécurisation-docker)
-- [Meilleures Pratiques](#meilleures-pratiques)
+- [Meilleures Pratiques v0.2.0](#meilleures-pratiques-v020)
 - [Audit et Monitoring](#audit-et-monitoring)
+
+---
+
+## 🆕 Nouveautés v0.2.0
+
+### Améliorations de Sécurité
+
+- ✅ **Service Account `jenkins-automation`** avec permissions minimales
+- ✅ **Token-based authentication** (5-minute expiration)
+- ✅ **Password encryption** - Jamais loggés ou exposés
+- ✅ **Client secret masking** - Seulement les 4 derniers caractères affichés
+- ✅ **Temporary files** pour payloads sensibles (auto-supprimés)
+- ✅ **Confirmation gates** pour opérations destructives
+- ✅ **DRY_RUN mode** pour tests sans side effects
+- ✅ **Audit logging** de toutes les opérations critiques
 
 ---
 
@@ -78,6 +97,272 @@ Valid Redirect URIs:
   - https://${JENKINS_URL}.com/*
   - https://${JENKINS_URL}.com/securityRealm/finishLogin
 ```
+
+---
+
+## Service Accounts
+
+### 🤖 jenkins-automation Service Account
+
+**Version:** v0.2.0  
+**Purpose:** Automation de la gestion Keycloak via pipelines Jenkins
+
+#### Configuration
+
+```yaml
+Client ID: jenkins-automation
+Client Type: Confidential
+Service Accounts Enabled: true
+Authorization Enabled: false
+Standard Flow: Disabled
+Direct Access Grants: Disabled
+```
+
+#### Permissions Requises (Realm-Management)
+
+Le service account doit avoir les rôles suivants pour fonctionner correctement:
+
+| Rôle | Purpose | Pipelines Concernés |
+|------|---------|---------------------|
+| `manage-users` | Créer/modifier/supprimer utilisateurs | User Management |
+| `view-users` | Lister et consulter utilisateurs | User Management, Audit |
+| `manage-clients` | Créer/modifier/supprimer clients | Client Management |
+| `view-clients` | Lister et consulter clients | Client Management, Audit |
+| `query-clients` | Rechercher clients | Client Management |
+| `query-groups` | Rechercher groupes | Group Management |
+| `query-users` | Rechercher utilisateurs | All Management Pipelines |
+
+#### Principe de Moindre Privilège
+
+✅ **Ce qui est accordé:**
+- Gestion des utilisateurs dans le realm `internal`
+- Gestion des groupes et membres
+- Gestion des clients OAuth2/OIDC
+- Consultation des sessions
+- Génération de rapports
+
+❌ **Ce qui n'est PAS accordé:**
+- Modification de la configuration du realm
+- Gestion des Identity Providers
+- Modification des rôles realm-management
+- Accès au realm `master`
+- Modification des politiques de sécurité
+
+#### Authentification Token
+
+```groovy
+// Obtenir un access token
+def token = keycloakAuth.getAccessToken(
+    KC_URL_INTERNAL,
+    KC_CLIENT_ID_JENKINS_AUTOMATION,
+    KC_CLIENT_SECRET_JENKINS_AUTOMATION
+)
+
+// Token properties
+// - Type: Bearer
+// - Expiration: 5 minutes
+// - Scope: Service account roles
+// - Auto-cleanup: Oui (post-pipeline)
+```
+
+#### Rotation des Secrets
+
+**Fréquence recommandée:** Tous les 90 jours
+
+```bash
+# 1. Générer nouveau secret dans Keycloak
+Pipeline: Keycloak-Client-Management
+ACTION: REGENERATE_SECRET
+CLIENT_ID: jenkins-automation
+
+# 2. Mettre à jour dans Jenkins
+# Credentials → Update KC_SECRET_JENKINS_AUTOMATION
+
+# 3. Tester
+Pipeline: Test-Keycloak-User-Management
+```
+
+---
+
+## Gestion des Secrets dans les Pipelines
+
+### 🔒 Types de Secrets Gérés
+
+#### 1. Passwords Utilisateurs
+
+**Sécurité:**
+- Type de paramètre: `password` (encrypted in Jenkins)
+- Conversion: `.toString()` pour utilisation
+- Logging: Jamais affiché dans les logs
+- Transmission: Via fichiers temporaires uniquement
+- Cleanup: Fichiers supprimés automatiquement
+
+**Exemple:**
+```groovy
+parameters {
+    password(
+        name: 'PASSWORD',
+        defaultValue: '',
+        description: 'User password (leave empty for auto-generation)'
+    )
+}
+
+stages {
+    stage('Create User') {
+        steps {
+            script {
+                // Conversion sécurisée
+                def pwd = params.PASSWORD.toString()
+                
+                // Utilisation via fichier temporaire
+                def tmpFile = "/tmp/pwd_${BUILD_NUMBER}.txt"
+                sh "echo '${pwd}' > ${tmpFile}"
+                
+                // Appel API
+                sh """
+                    curl -X POST ... \
+                      -d @${tmpFile}
+                """
+                
+                // Cleanup immédiat
+                sh "rm -f ${tmpFile}"
+            }
+        }
+    }
+}
+```
+
+#### 2. Client Secrets
+
+**Sécurité:**
+- Masking: Seulement les 4 derniers caractères affichés
+- Stockage: Jenkins Credentials Store (encrypted)
+- Transmission: Variables d'environnement (scope limité)
+- Logs: Automatiquement masqués par Jenkins
+
+**Exemple:**
+```groovy
+// Affichage sécurisé
+def maskedSecret = "****${secret.substring(secret.length() - 4)}"
+echo "Client secret: ${maskedSecret}"
+// Output: Client secret: ****Xy9Z
+```
+
+#### 3. Access Tokens
+
+**Sécurité:**
+- Durée de vie: 5 minutes
+- Scope: Limité aux rôles du service account
+- Stockage: Variable temporaire (scope stage)
+- Cleanup: Automatique en fin de pipeline
+
+**Exemple:**
+```groovy
+environment {
+    ACCESS_TOKEN = ''  // Initialisé vide
+}
+
+stages {
+    stage('Get Token') {
+        steps {
+            script {
+                ACCESS_TOKEN = keycloakAuth.getAccessToken(...)
+            }
+        }
+    }
+    
+    stage('Use Token') {
+        steps {
+            script {
+                // Utilisation du token
+                keycloakUser.createUser(ACCESS_TOKEN, ...)
+            }
+        }
+    }
+}
+
+post {
+    always {
+        script {
+            // Cleanup automatique
+            ACCESS_TOKEN = null
+        }
+    }
+}
+```
+
+### 🛡️ Protection contre les Fuites
+
+#### Dans les Logs
+
+```groovy
+// ❌ MAUVAIS - Secret visible
+echo "Password: ${password}"
+
+// ✅ BON - Secret masqué
+echo "Password set successfully"
+```
+
+#### Dans les Fichiers Temporaires
+
+```groovy
+// ✅ BON - Cleanup automatique
+try {
+    def tmpFile = "/tmp/payload_${BUILD_NUMBER}.json"
+    writeFile file: tmpFile, text: jsonPayload
+    sh "curl -X POST -d @${tmpFile} ..."
+} finally {
+    sh "rm -f /tmp/payload_${BUILD_NUMBER}.json"
+}
+```
+
+#### Dans les Paramètres URL
+
+```groovy
+// ❌ MAUVAIS - Secret dans l'URL
+sh "curl https://api.com/users?password=${pwd}"
+
+// ✅ BON - Secret dans le body
+sh """
+    curl -X POST https://api.com/users \
+      -H 'Content-Type: application/json' \
+      -d '{"password": "${pwd}"}'
+"""
+```
+
+### 🔐 Confirmation Gates
+
+Pour les opérations destructives ou sensibles, des gates de confirmation sont implémentés:
+
+```groovy
+parameters {
+    booleanParam(
+        name: 'CONFIRM_DELETE',
+        defaultValue: false,
+        description: '⚠️ Check to confirm deletion'
+    )
+}
+
+stages {
+    stage('Validate') {
+        steps {
+            script {
+                if (!params.CONFIRM_DELETE) {
+                    error("❌ Deletion not confirmed. Check CONFIRM_DELETE to proceed.")
+                }
+            }
+        }
+    }
+}
+```
+
+**Opérations nécessitant confirmation:**
+- DELETE_USER
+- DELETE_GROUP (surtout avec membres)
+- DELETE_CLIENT
+- REGENERATE_SECRET
+- REVOKE_USER_SESSIONS
+- REVOKE_ALL_SESSIONS (double confirmation)
 
 ---
 
