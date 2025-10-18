@@ -306,8 +306,9 @@ def getSessionStatistics(Map config) {
     
     if (sessions.size() > 0) {
         def now = new Date().time
-        def totalAge = sessions.sum { session ->
-            session.start ? (now - session.start) : 0
+        def totalAge = 0
+        sessions.each { session ->
+            totalAge += session.start ? (now - session.start) : 0
         }
         stats.averageSessionAge = (totalAge / sessions.size() / 1000 / 60).intValue()
         
