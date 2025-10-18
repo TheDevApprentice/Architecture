@@ -1,0 +1,529 @@
+/**
+ * Keycloak Compliance Reporting Pipeline
+ * 
+ * Generate compliance reports (GDPR, access review, privileged accounts, etc.)
+ * Scheduled: Weekly for management, Monthly for executives
+ */
+
+// Load Keycloak library functions
+def keycloakAuth
+def keycloakUser
+def keycloakGroup
+def keycloakClient
+def keycloakAudit
+
+def allUsers = []
+def allGroups = []
+def allClients = []
+def serviceAccounts = []
+def reportData = [:]
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REPORT_TYPE',
+            choices: [
+                'FULL_COMPLIANCE',
+                'ACCESS_REVIEW',
+                'PRIVILEGED_ACCOUNTS',
+                'PASSWORD_POLICY',
+                'CLIENT_SECRETS_AUDIT',
+                'MFA_ADOPTION'
+            ],
+            description: 'Type of compliance report'
+        )
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm'
+        )
+        choice(
+            name: 'OUTPUT_FORMAT',
+            choices: ['HTML', 'PDF', 'CSV', 'JSON', 'ALL'],
+            description: 'Report output format'
+        )
+        booleanParam(
+            name: 'SEND_EMAIL',
+            defaultValue: false,
+            description: 'Send report via email'
+        )
+        string(
+            name: 'EMAIL_RECIPIENTS',
+            defaultValue: '',
+            description: 'Email recipients (comma-separated)'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        REPORT_DIR = "${WORKSPACE}/compliance-reports"
+    }
+    
+    options {
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '90'))
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    keycloakGroup = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakGroup.groovy'
+                    keycloakClient = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakClient.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Setup') {
+            steps {
+                script {
+                    echo "🔧 Setting up reporting environment..."
+                    sh "mkdir -p ${env.REPORT_DIR}"
+                    echo "✅ Report directory created: ${env.REPORT_DIR}"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('Gather Data') {
+            steps {
+                script {
+                    echo "📊 Gathering compliance data..."
+                    
+                    // Get all users
+                    allUsers = keycloakUser.listUsers(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    echo "  ✅ Users: ${allUsers.size()}"
+
+                    // Get all groups
+                    allGroups = keycloakGroup.listGroups(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    echo "  ✅ Groups: ${allGroups.size()}"
+
+                    // Get all clients
+                    allClients = keycloakClient.listClients(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    echo "  ✅ Clients: ${allClients.size()}"
+
+                    // Get service accounts
+                    serviceAccounts = allClients.findAll { it["serviceAccountsEnabled"] }
+                    echo "  ✅ Service Accounts: ${serviceAccounts.size()}"
+                    
+                    echo "✅ Data gathering completed"
+                }
+            }
+        }
+        
+        stage('Generate Report') {
+            steps {
+                script {
+                    echo "📝 Generating ${params.REPORT_TYPE} report..."
+                    echo "=" * 80
+                    
+                    reportData = [:]
+                    
+                    switch(params.REPORT_TYPE) {
+                        case 'FULL_COMPLIANCE':
+                            reportData = generateFullComplianceReport(allUsers, allGroups, allClients)
+                            break
+                            
+                        case 'ACCESS_REVIEW':
+                            reportData = generateAccessReviewReport(allUsers, allGroups, allClients)
+                            break
+                            
+                        case 'PRIVILEGED_ACCOUNTS':
+                            reportData = generatePrivilegedAccountsReport(allUsers, serviceAccounts)
+                            break
+                            
+                        case 'PASSWORD_POLICY':
+                            reportData = generatePasswordPolicyReport(allUsers)
+                            break
+                            
+                        case 'CLIENT_SECRETS_AUDIT':
+                            reportData = generateClientSecretsAudit(allClients)
+                            break
+                            
+                        case 'MFA_ADOPTION':
+                            reportData = generateMFAAdoptionReport(allUsers)
+                            break
+                            
+                        default:
+                            error("Unknown report type: ${params.REPORT_TYPE}")
+                    }
+                    
+                    env.REPORT_DATA = reportData
+                    
+                    // Save reports in requested formats
+                    if (params.OUTPUT_FORMAT in ['HTML', 'ALL']) {
+                        def html = generateHTMLReport(reportData)
+                        writeFile file: "${env.REPORT_DIR}/${params.REPORT_TYPE}.html", text: html
+                        echo "✅ HTML report generated"
+                    }
+                    
+                    if (params.OUTPUT_FORMAT in ['JSON', 'ALL']) {
+                        def json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(reportData))
+                        writeFile file: "${env.REPORT_DIR}/${params.REPORT_TYPE}.json", text: json
+                        echo "✅ JSON report generated"
+                    }
+                    
+                    if (params.OUTPUT_FORMAT in ['CSV', 'ALL']) {
+                        def csv = generateCSVReport(reportData)
+                        writeFile file: "${env.REPORT_DIR}/${params.REPORT_TYPE}.csv", text: csv
+                        echo "✅ CSV report generated"
+                    }
+                    
+                    echo "=" * 80
+                    echo "✅ Report generation completed"
+                }
+            }
+        }
+        
+        stage('Display Summary') {
+            steps {
+                script {
+                    echo ""
+                    echo "=" * 80
+                    echo "📊 COMPLIANCE REPORT SUMMARY"
+                    echo "=" * 80
+                    echo "📅 Date: ${new Date().format('yyyy-MM-dd HH:mm:ss')}"
+                    echo "🏢 Realm: ${params.REALM}"
+                    echo "📋 Report Type: ${params.REPORT_TYPE}"
+                    echo ""
+                    
+                    reportData.summary.each { key, value ->
+                        echo "  • ${key}: ${value}"
+                    }
+                    
+                    echo ""
+                    echo "=" * 80
+                    echo "📁 Reports saved to: ${env.REPORT_DIR}"
+                    echo "=" * 80
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                // Archive all reports
+                archiveArtifacts artifacts: 'compliance-reports/**/*', allowEmptyArchive: true
+                
+                // Publish HTML report if available
+                if (fileExists("${env.REPORT_DIR}/${params.REPORT_TYPE}.html")) {
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'compliance-reports',
+                        reportFiles: "${params.REPORT_TYPE}.html",
+                        reportName: "Compliance Report: ${params.REPORT_TYPE}"
+                    ])
+                }
+                
+                // Send email if requested
+                if (params.SEND_EMAIL && params.EMAIL_RECIPIENTS) {
+                    echo "📧 Sending report to: ${params.EMAIL_RECIPIENTS}"
+                    echo "   (Email configuration required in Jenkins)"
+                }
+                
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+            }
+        }
+        success {
+            echo "🎉 Compliance report generated successfully!"
+        }
+        failure {
+            echo "❌ Compliance report generation failed!"
+        }
+    }
+}
+
+/**
+ * Generate full compliance report
+ */
+def generateFullComplianceReport(users, groups, clients) {
+    
+    def unverifiedEmails = users.findAll { !it.emailVerified && it.email }
+    def disabledUsers = users.findAll { !it.enabled }
+    def usersWithoutEmail = users.findAll { !it.email }
+    
+    def report = [
+        type: 'FULL_COMPLIANCE',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Total Users': users.size(),
+            'Total Groups': groups.size(),
+            'Total Clients': clients.size(),
+            'Unverified Emails': unverifiedEmails.size(),
+            'Disabled Users': disabledUsers.size(),
+            'Users Without Email': usersWithoutEmail.size()
+        ],
+        details: [
+            unverifiedEmails: unverifiedEmails,
+            disabledUsers: disabledUsers,
+            usersWithoutEmail: usersWithoutEmail
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate access review report
+ */
+def generateAccessReviewReport(users, groups, clients) {
+    
+    // Build user-group mapping
+    def userGroupMap = [:]
+    users.each { user ->
+        userGroupMap[user.username] = []
+    }
+    
+    def report = [
+        type: 'ACCESS_REVIEW',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Total Users': users.size(),
+            'Total Groups': groups.size(),
+            'Users with Groups': userGroupMap.findAll { it.value.size() > 0 }.size()
+        ],
+        details: [
+            users: users.collect { [username: it.username, email: it.email, enabled: it.enabled] },
+            groups: groups.collect { [name: it.name, path: it.path] }
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate privileged accounts report
+ */
+def generatePrivilegedAccountsReport(users, serviceAccountsLocal) {
+    
+    // Filter admin users (simplified - would need role checking in real implementation)
+    def adminUsers = users.findAll { 
+        it.username?.contains('admin') || it.email?.contains('admin')
+    }
+    
+    def report = [
+        type: 'PRIVILEGED_ACCOUNTS',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Potential Admin Users': adminUsers.size(),
+            'Service Accounts': serviceAccountsLocal.size(),
+            'Total Privileged': adminUsers.size() + serviceAccountsLocal.size()
+        ],
+        details: [
+            adminUsers: adminUsers.collect { [username: it.username, email: it.email, enabled: it.enabled] },
+            serviceAccounts: serviceAccountsLocal.collect { [clientId: it.clientId, enabled: it.enabled] }
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate password policy compliance report
+ */
+def generatePasswordPolicyReport(users) {
+    
+    def usersRequiringAction = users.findAll { 
+        it.requiredActions && it.requiredActions.size() > 0 
+    }
+    
+    def report = [
+        type: 'PASSWORD_POLICY',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Total Users': users.size(),
+            'Users Requiring Action': usersRequiringAction.size(),
+            'Compliance Rate': "${((users.size() - usersRequiringAction.size()) * 100 / users.size()).round(2)}%"
+        ],
+        details: [
+            usersRequiringAction: usersRequiringAction.collect { 
+                [username: it.username, requiredActions: it.requiredActions] 
+            }
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate client secrets audit
+ */
+def generateClientSecretsAudit(clients) {
+    def confidentialClients = clients.findAll { !it.publicClient }
+    
+    def report = [
+        type: 'CLIENT_SECRETS_AUDIT',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Total Clients': clients.size(),
+            'Confidential Clients': confidentialClients.size(),
+            'Public Clients': clients.size() - confidentialClients.size()
+        ],
+        details: [
+            confidentialClients: confidentialClients.collect { 
+                [clientId: it.clientId, enabled: it.enabled, serviceAccount: it.serviceAccountsEnabled] 
+            }
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate MFA adoption report
+ */
+def generateMFAAdoptionReport(users) {
+    
+    // Users with CONFIGURE_TOTP required action need to set up MFA
+    def usersWithoutMFA = users.findAll { 
+        it.requiredActions?.contains('CONFIGURE_TOTP')
+    }
+    
+    def mfaAdoptionRate = users.size() > 0 ? 
+        ((users.size() - usersWithoutMFA.size()) * 100 / users.size()).round(2) : 0
+    
+    def report = [
+        type: 'MFA_ADOPTION',
+        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+        realm: params.REALM,
+        summary: [
+            'Total Users': users.size(),
+            'Users with MFA': users.size() - usersWithoutMFA.size(),
+            'Users without MFA': usersWithoutMFA.size(),
+            'Adoption Rate': "${mfaAdoptionRate}%"
+        ],
+        details: [
+            usersWithoutMFA: usersWithoutMFA.collect { 
+                [username: it.username, email: it.email] 
+            }
+        ]
+    ]
+    
+    return report
+}
+
+/**
+ * Generate HTML report
+ */
+def generateHTMLReport(reportData) {
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>${reportData.type} Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #333; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; }
+        .card h3 { margin: 0; font-size: 14px; opacity: 0.9; }
+        .card .number { font-size: 36px; font-weight: bold; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #34495e; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 ${reportData.type} Report</h1>
+        <p><strong>Generated:</strong> ${reportData.timestamp}</p>
+        <p><strong>Realm:</strong> ${reportData.realm}</p>
+        
+        <div class="summary">
+            ${reportData.summary.collect { k, v -> 
+                "<div class='card'><h3>${k}</h3><div class='number'>${v}</div></div>"
+            }.join('\n')}
+        </div>
+        
+        <h2>Detailed Information</h2>
+        <p>See JSON/CSV exports for complete details.</p>
+    </div>
+</body>
+</html>
+"""
+}
+
+/**
+ * Generate CSV report
+ */
+def generateCSVReport(reportData) {
+    def csv = new StringBuilder()
+    csv.append("${reportData.type} REPORT\n")
+    csv.append("Generated,${reportData.timestamp}\n")
+    csv.append("Realm,${reportData.realm}\n\n")
+    csv.append("SUMMARY\n")
+    reportData.summary.each { k, v ->
+        csv.append("${k},${v}\n")
+    }
+    return csv.toString()
+}

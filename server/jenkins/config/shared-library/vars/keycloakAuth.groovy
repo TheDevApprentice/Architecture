@@ -29,7 +29,7 @@ def getServiceAccountToken(Map config) {
         returnStdout: true
     ).trim()
     
-    def jsonResponse = readJSON text: response
+    def jsonResponse = readJSON(text: response)
     
     if (!jsonResponse.access_token) {
         error("Failed to obtain access token: ${response}")
@@ -69,7 +69,7 @@ def getAdminToken(Map config) {
         returnStdout: true
     ).trim()
     
-    def jsonResponse = readJSON text: response
+    def jsonResponse = readJSON(text: response)
     
     if (!jsonResponse.access_token) {
         error("Failed to obtain admin token: ${response}")
@@ -109,7 +109,7 @@ def validateToken(Map config) {
             returnStdout: true
         ).trim()
         
-        def jsonResponse = readJSON text: response
+        def jsonResponse = readJSON(text: response)
         return jsonResponse.active == true
     } catch (Exception e) {
         echo "⚠️  Token validation failed: ${e.message}"

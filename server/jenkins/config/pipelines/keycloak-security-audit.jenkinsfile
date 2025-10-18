@@ -1,0 +1,397 @@
+/**
+ * Keycloak Security Audit Pipeline
+ * 
+ * Automated security audit with detailed reporting
+ * Scheduled to run daily (cron: @daily or 0 2 * * *)
+ */
+
+// Load Keycloak library functions
+def keycloakAuth
+def keycloakUser
+def keycloakGroup
+def keycloakClient
+def keycloakAudit
+
+def unverifiedUsers = []
+def inactiveUsers = []
+def disabledUsers = []
+def orphanGroups = []
+def serviceAccounts = []
+
+pipeline {
+    agent any
+    
+    parameters {
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm to audit'
+        )
+        string(
+            name: 'INACTIVE_DAYS_THRESHOLD',
+            defaultValue: '90',
+            description: 'Days of inactivity to flag users'
+        )
+        string(
+            name: 'UNVERIFIED_EMAIL_THRESHOLD',
+            defaultValue: '20',
+            description: 'Alert threshold for unverified emails'
+        )
+        string(
+            name: 'INACTIVE_USERS_THRESHOLD',
+            defaultValue: '50',
+            description: 'Alert threshold for inactive users'
+        )
+        choice(
+            name: 'REPORT_FORMAT',
+            choices: ['HTML', 'JSON', 'CSV', 'ALL'],
+            description: 'Output report format'
+        )
+        booleanParam(
+            name: 'SEND_EMAIL_ALERTS',
+            defaultValue: false,
+            description: 'Send email alerts if critical issues found'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        REPORT_DIR = "${WORKSPACE}/reports"
+    }
+    
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    keycloakGroup = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakGroup.groovy'
+                    keycloakClient = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakClient.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Setup') {
+            steps {
+                script {
+                    echo "🔧 Setting up audit environment..."
+                    sh "mkdir -p ${env.REPORT_DIR}"
+                    echo "✅ Report directory created: ${env.REPORT_DIR}"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+
+        stage('Audit: Unverified Emails') {
+            steps {
+                script {
+                    echo "🔍 Checking for users with unverified emails..."
+                    unverifiedUsers = keycloakAudit.detectUnverifiedEmails(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    
+                    def count = unverifiedUsers.size()
+                    echo "📊 Result: ${count} users with unverified emails"
+                    
+                    if (count > params.UNVERIFIED_EMAIL_THRESHOLD.toInteger()) {
+                        echo "⚠️  WARNING: Threshold exceeded (${params.UNVERIFIED_EMAIL_THRESHOLD})"
+                    }
+                }
+            }
+        }
+        
+        stage('Audit: Inactive Users') {
+            steps {
+                script {
+                    echo "🔍 Checking for inactive users (>${params.INACTIVE_DAYS_THRESHOLD} days)..."
+                    inactiveUsers = keycloakAudit.detectInactiveUsers(
+                        accessToken: env.ACCESS_TOKEN,
+                        inactiveDays: params.INACTIVE_DAYS_THRESHOLD.toInteger()
+                    )
+                    
+                    def count = inactiveUsers.size()
+                    echo "📊 Result: ${count} inactive users"
+                    
+                    if (count > params.INACTIVE_USERS_THRESHOLD.toInteger()) {
+                        echo "⚠️  WARNING: Threshold exceeded (${params.INACTIVE_USERS_THRESHOLD})"
+                    }
+                }
+            }
+        }
+        
+        stage('Audit: Disabled Users') {
+            steps {
+                script {
+                    echo "🔍 Checking for disabled users..."
+                    disabledUsers = keycloakAudit.detectDisabledUsers(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    
+                    def count = disabledUsers.size()
+                    echo "📊 Result: ${count} disabled users"
+                }
+            }
+        }
+        
+        stage('Audit: Orphan Groups') {
+            steps {
+                script {
+                    echo "🔍 Checking for orphan groups (no members)..."
+                    orphanGroups = keycloakGroup.detectOrphanGroups(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    
+                    def count = orphanGroups.size()
+                    echo "📊 Result: ${count} orphan groups"
+                }
+            }
+        }
+        
+        stage('Audit: Service Accounts') {
+            steps {
+                script {
+                    echo "🔍 Checking service accounts..."
+                    def clients = keycloakClient.listClients(
+                        accessToken: env.ACCESS_TOKEN
+                    )
+                    
+                    serviceAccounts = clients.findAll { it["serviceAccountsEnabled"] }
+                    def count = serviceAccounts.size()
+                    echo "📊 Result: ${count} service accounts"
+                }
+            }
+        }
+        
+        stage('Generate Reports') {
+            steps {
+                script {
+                    echo "📝 Generating audit reports..."
+                    echo "=" * 80
+                    
+                    def auditResults = [
+                        unverifiedEmails: unverifiedUsers.size(),
+                        unverifiedEmailsList: unverifiedUsers,
+                        inactiveUsers: inactiveUsers.size(),
+                        inactiveUsersList: inactiveUsers,
+                        disabledUsers: disabledUsers.size(),
+                        disabledUsersList: disabledUsers,
+                        orphanGroups: orphanGroups.size(),
+                        orphanGroupsList: orphanGroups,
+                        serviceAccounts: serviceAccounts.size(),
+                        timestamp: new Date().format("yyyy-MM-dd HH:mm:ss"),
+                        realm: params.REALM
+                    ]
+                    
+                    // Generate HTML Report
+                    if (params.REPORT_FORMAT in ['HTML', 'ALL']) {
+                        echo "📄 Generating HTML report..."
+                        def htmlReport = keycloakAudit.generateSecurityReport(
+                            auditResults: auditResults
+                        )
+                        writeFile file: "${env.REPORT_DIR}/security-audit-report.html", text: htmlReport
+                        echo "✅ HTML report generated"
+                    }
+                    
+                    // Generate JSON Report
+                    if (params.REPORT_FORMAT in ['JSON', 'ALL']) {
+                        echo "📄 Generating JSON report..."
+                        def jsonReport = groovy.json.JsonOutput.toJson(auditResults)
+                        def jsonPretty = groovy.json.JsonOutput.prettyPrint(jsonReport)
+                        writeFile file: "${env.REPORT_DIR}/security-audit-report.json", text: jsonPretty
+                        echo "✅ JSON report generated"
+                    }
+                    
+                    // Generate CSV Report
+                    if (params.REPORT_FORMAT in ['CSV', 'ALL']) {
+                        echo "📄 Generating CSV report..."
+                        def csv = generateCSVReport(auditResults)
+                        writeFile file: "${env.REPORT_DIR}/security-audit-report.csv", text: csv
+                        echo "✅ CSV report generated"
+                    }
+                    
+                    echo "=" * 80
+                    echo "✅ All reports generated successfully"
+                }
+            }
+        }
+        
+        stage('Display Summary') {
+            steps {
+                script {
+                    echo ""
+                    echo "=" * 80
+                    echo "🔒 SECURITY AUDIT SUMMARY"
+                    echo "=" * 80
+                    echo "📅 Date: ${new Date().format('yyyy-MM-dd HH:mm:ss')}"
+                    echo "🏢 Realm: ${params.REALM}"
+                    echo ""
+                    echo "📊 FINDINGS:"
+                    echo "  • Unverified Emails: ${unverifiedUsers.size()}"
+                    echo "  • Inactive Users: ${inactiveUsers.size()} (>${params.INACTIVE_DAYS_THRESHOLD}d)"
+                    echo "  • Disabled Users: ${disabledUsers.size()}"
+                    echo "  • Orphan Groups: ${orphanGroups.size()}"
+                    echo "  • Service Accounts: ${serviceAccounts.size()}"
+                    echo ""
+                    
+                    def criticalIssues = 0
+                    if (unverifiedUsers.size() > params.UNVERIFIED_EMAIL_THRESHOLD.toInteger()) {
+                        echo "⚠️  CRITICAL: Unverified emails exceed threshold!"
+                        criticalIssues++
+                    }
+                    if (inactiveUsers.size() > params.INACTIVE_USERS_THRESHOLD.toInteger()) {
+                        echo "⚠️  CRITICAL: Inactive users exceed threshold!"
+                        criticalIssues++
+                    }
+                    
+                    if (criticalIssues > 0) {
+                        echo ""
+                        echo "❌ ${criticalIssues} CRITICAL ISSUE(S) DETECTED!"
+                        currentBuild.result = 'UNSTABLE'
+                    } else {
+                        echo "✅ No critical issues detected"
+                    }
+                    
+                    echo "=" * 80
+                    echo "📁 Reports saved to: ${env.REPORT_DIR}"
+                    echo "=" * 80
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                // Archive reports
+                archiveArtifacts artifacts: 'reports/**/*', allowEmptyArchive: true
+                
+                // Publish HTML report if available
+                if (fileExists("${env.REPORT_DIR}/security-audit-report.html")) {
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'reports',
+                        reportFiles: 'security-audit-report.html',
+                        reportName: 'Security Audit Report'
+                    ])
+                }
+                
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+            }
+        }
+        success {
+            echo "🎉 Security audit completed successfully!"
+        }
+        unstable {
+            script {
+                echo "⚠️  Security audit completed with warnings!"
+                
+                // Send email alerts if enabled
+                if (params.SEND_EMAIL_ALERTS) {
+                    echo "📧 Sending email alerts... (email configuration required)"
+                }
+            }
+        }
+        failure {
+            echo "❌ Security audit failed!"
+        }
+    }
+}
+
+/**
+ * Generate CSV report from audit results
+ */
+def generateCSVReport(auditResults) {
+    def csv = new StringBuilder()
+    
+    // Summary section
+    csv.append("SECURITY AUDIT SUMMARY\n")
+    csv.append("Timestamp,${auditResults.timestamp}\n")
+    csv.append("Realm,${auditResults.realm}\n")
+    csv.append("\n")
+    csv.append("Category,Count\n")
+    csv.append("Unverified Emails,${auditResults.unverifiedEmails}\n")
+    csv.append("Inactive Users,${auditResults.inactiveUsers}\n")
+    csv.append("Disabled Users,${auditResults.disabledUsers}\n")
+    csv.append("Orphan Groups,${auditResults.orphanGroups}\n")
+    csv.append("Service Accounts,${auditResults.serviceAccounts}\n")
+    csv.append("\n")
+    
+    // Unverified emails detail
+    if (auditResults.unverifiedEmailsList.size() > 0) {
+        csv.append("UNVERIFIED EMAILS\n")
+        csv.append("Username,Email,First Name,Last Name,Enabled\n")
+        auditResults.unverifiedEmailsList.each { user ->
+            csv.append("${user.username},${user.email ?: ''},${user.firstName ?: ''},${user.lastName ?: ''},${user.enabled}\n")
+        }
+        csv.append("\n")
+    }
+    
+    // Inactive users detail
+    if (auditResults.inactiveUsersList.size() > 0) {
+        csv.append("INACTIVE USERS\n")
+        csv.append("Username,Email,First Name,Last Name,Enabled\n")
+        auditResults.inactiveUsersList.each { user ->
+            csv.append("${user.username},${user.email ?: ''},${user.firstName ?: ''},${user.lastName ?: ''},${user.enabled}\n")
+        }
+        csv.append("\n")
+    }
+    
+    return csv.toString()
+}

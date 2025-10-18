@@ -163,8 +163,8 @@ This is the first tagged release. Previous development was exploratory and inclu
 ## Future Releases (to be redefined if needed)
 
 ### Planned for v0.2.0
-- [ ] Complete Jenkins CI/CD pipeline usage for Keycloak
-- [ ] Complete Jenkins CI/CD pipeline integration Tests for Keycloak
+- [x] Complete Jenkins CI/CD pipeline usage for Keycloak
+- [x] Complete Jenkins CI/CD pipeline integration Tests for Keycloak
 
 ### Planned for v0.3.0
 - [ ] Complete MinIO integration with applications

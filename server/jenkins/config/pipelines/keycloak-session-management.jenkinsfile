@@ -1,0 +1,461 @@
+/**
+ * Keycloak Session Management Pipeline
+ * 
+ * Management of active user sessions with emergency revocation capabilities
+ */
+
+// Load Keycloak library functions
+def keycloakAuth
+def keycloakSession
+def keycloakAudit
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: [
+                'LIST_ACTIVE_SESSIONS',
+                'LIST_USER_SESSIONS',
+                'REVOKE_USER_SESSIONS',
+                'REVOKE_ALL_SESSIONS',
+                'SESSION_STATISTICS',
+                'DETECT_ANOMALIES'
+            ],
+            description: 'Action to perform'
+        )
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm'
+        )
+        string(
+            name: 'USERNAME',
+            defaultValue: '',
+            description: 'Username (required for user-specific actions)'
+        )
+        string(
+            name: 'ANOMALY_SESSION_AGE_DAYS',
+            defaultValue: '7',
+            description: 'Flag sessions older than X days as anomalies'
+        )
+        booleanParam(
+            name: 'EMERGENCY_MODE',
+            defaultValue: false,
+            description: '⚠️  Skip approval gates (USE WITH CAUTION)'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    echo "🔍 Validating parameters..."
+                    
+                    def actionsRequiringUsername = [
+                        'LIST_USER_SESSIONS',
+                        'REVOKE_USER_SESSIONS'
+                    ]
+                    
+                    if (params.ACTION in actionsRequiringUsername && !params.USERNAME) {
+                        error("USERNAME is required for ${params.ACTION}")
+                    }
+                    
+                    echo "✅ Parameters validated"
+                }
+            }
+        }
+        
+        stage('Get Access Token') {
+            steps {
+                script {
+                    echo "🔐 Obtaining Keycloak access token..."
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET
+                    )
+                    echo "✅ Access token obtained"
+                }
+            }
+        }
+        
+        stage('Execute Action') {
+            steps {
+                script {
+                    echo "🚀 Executing action: ${params.ACTION}"
+                    echo "=" * 80
+                    
+                    switch(params.ACTION) {
+                        case 'LIST_ACTIVE_SESSIONS':
+                            def sessions = keycloakSession.listActiveSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            echo "📊 Active Sessions in Realm '${params.REALM}':"
+                            echo "=" * 80
+                            
+                            if (sessions.size() == 0) {
+                                echo "  ℹ️  No active sessions found"
+                            } else {
+                                // Group by user
+                                def sessionsByUser = sessions.groupBy { it.username }
+                                
+                                sessionsByUser.each { username, userSessions ->
+                                    echo "  👤 ${username} (${userSessions.size()} session(s))"
+                                    userSessions.each { session ->
+                                        def age = session.start ? ((new Date().time - session.start) / 1000 / 60).intValue() : 0
+                                        echo "      • Client: ${session.clientId}, Age: ${age} min"
+                                    }
+                                }
+                            }
+                            
+                            echo "=" * 80
+                            echo "Total: ${sessions.size()} active sessions"
+                            echo "Unique users: ${sessions.collect { it.username }.unique().size()}"
+                            break
+                            
+                        case 'LIST_USER_SESSIONS':
+                            // First get user ID
+                            def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                max: 1
+                            )
+                            
+                            if (users.size() == 0) {
+                                error("User '${params.USERNAME}' not found")
+                            }
+                            
+                            def userId = users[0].id
+                            def sessions = keycloakSession.listUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: userId
+                            )
+                            
+                            echo "📊 Sessions for User '${params.USERNAME}':"
+                            echo "=" * 80
+                            
+                            if (sessions.size() == 0) {
+                                echo "  ℹ️  No active sessions found"
+                            } else {
+                                sessions.each { session ->
+                                    echo "  • Session ID: ${session.id}"
+                                    echo "    IP Address: ${session.ipAddress}"
+                                    echo "    Started: ${new Date(session.start).format('yyyy-MM-dd HH:mm:ss')}"
+                                    
+                                    def age = ((new Date().time - session.start) / 1000 / 60 / 60).intValue()
+                                    echo "    Age: ${age} hours"
+                                    
+                                    if (session.clients) {
+                                        echo "    Clients: ${session.clients.keySet().join(', ')}"
+                                    }
+                                    echo ""
+                                }
+                            }
+                            
+                            echo "=" * 80
+                            echo "Total: ${sessions.size()} active sessions"
+                            break
+                            
+                        case 'REVOKE_USER_SESSIONS':
+                            // First get user ID
+                            def keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                            def users = keycloakUser.listUsers(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                username: params.USERNAME,
+                                max: 1
+                            )
+                            
+                            if (users.size() == 0) {
+                                error("User '${params.USERNAME}' not found")
+                            }
+                            
+                            def userId = users[0].id
+                            
+                            // Check if sessions exist first
+                            def sessions = keycloakSession.listUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: userId
+                            )
+                            
+                            if (sessions.size() == 0) {
+                                echo "ℹ️  No active sessions to revoke for user '${params.USERNAME}'"
+                                break
+                            }
+                            
+                            echo "⚠️  About to revoke ${sessions.size()} session(s) for user '${params.USERNAME}'"
+                            
+                            // Approval gate unless emergency mode
+                            if (!params.EMERGENCY_MODE) {
+                                try {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        input message: "⚠️  Revoke all sessions for user '${params.USERNAME}'?",
+                                              ok: 'REVOKE',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                            } else {
+                                echo "🚨 EMERGENCY MODE: Skipping approval gate"
+                            }
+                            
+                            keycloakSession.revokeUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: userId
+                            )
+                            
+                            echo "✅ All sessions revoked for user '${params.USERNAME}'"
+                            break
+                            
+                        case 'REVOKE_ALL_SESSIONS':
+                            echo "🚨 EMERGENCY: About to revoke ALL sessions in realm '${params.REALM}'"
+                            echo "⚠️  This will log out ALL users immediately!"
+                            
+                            // Double confirmation required unless emergency mode
+                            if (!params.EMERGENCY_MODE) {
+                                try {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        input message: "🚨 EMERGENCY: Revoke ALL sessions in realm '${params.REALM}'? This will log out ALL users!",
+                                              ok: 'REVOKE ALL',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                                
+                                // Second confirmation
+                                try {
+                                    timeout(time: 2, unit: 'MINUTES') {
+                                        input message: "⚠️  FINAL CONFIRMATION: Are you absolutely sure?",
+                                              ok: 'YES, REVOKE ALL',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                            } else {
+                                echo "🚨 EMERGENCY MODE: Skipping approval gates"
+                            }
+                            
+                            keycloakSession.revokeAllSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            echo "✅ ALL sessions revoked in realm '${params.REALM}'"
+                            echo "📧 IMPORTANT: Notify all users about the forced logout"
+                            break
+                            
+                        case 'SESSION_STATISTICS':
+                            def stats = keycloakAudit.getSessionStatistics(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            echo "📊 Session Statistics for Realm '${params.REALM}':"
+                            echo "=" * 80
+                            echo "  Total Active Sessions: ${stats.totalSessions}"
+                            echo "  Unique Users: ${stats.uniqueUsers}"
+                            echo "  Unique Clients: ${stats.uniqueClients}"
+                            echo "  Average Session Age: ${stats.averageSessionAge} minutes"
+                            
+                            if (stats.totalSessions > 0) {
+                                def avgPerUser = (stats.totalSessions / stats.uniqueUsers).round(2)
+                                echo "  Sessions per User: ${avgPerUser}"
+                            }
+                            
+                            echo "=" * 80
+                            break
+                            
+                        case 'DETECT_ANOMALIES':
+                            echo "🔍 Detecting session anomalies..."
+                            
+                            def sessions = keycloakSession.listActiveSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            def anomalies = []
+                            def thresholdMs = params.ANOMALY_SESSION_AGE_DAYS.toInteger() * 24 * 60 * 60 * 1000
+                            def now = new Date().time
+                            
+                            // Detect long-running sessions
+                            sessions.each { session ->
+                                if (session.start) {
+                                    def age = now - session.start
+                                    if (age > thresholdMs) {
+                                        anomalies << [
+                                            type: 'LONG_RUNNING_SESSION',
+                                            username: session.username,
+                                            sessionId: session.id,
+                                            ageDays: (age / 1000 / 60 / 60 / 24).intValue(),
+                                            ipAddress: session.ipAddress
+                                        ]
+                                    }
+                                }
+                            }
+                            
+                            // Detect users with multiple IPs
+                            def sessionsByUser = sessions.groupBy { it.username }
+                            sessionsByUser.each { username, userSessions ->
+                                def uniqueIPs = userSessions.collect { it.ipAddress }.unique()
+                                if (uniqueIPs.size() > 1) {
+                                    anomalies << [
+                                        type: 'MULTIPLE_IPS',
+                                        username: username,
+                                        sessionCount: userSessions.size(),
+                                        ipAddresses: uniqueIPs
+                                    ]
+                                }
+                            }
+                            
+                            echo "🔍 Anomaly Detection Results:"
+                            echo "=" * 80
+                            
+                            if (anomalies.size() == 0) {
+                                echo "✅ No anomalies detected"
+                            } else {
+                                echo "⚠️  ${anomalies.size()} anomalies detected:"
+                                echo ""
+                                
+                                anomalies.each { anomaly ->
+                                    if (anomaly.type == 'LONG_RUNNING_SESSION') {
+                                        echo "  🔴 Long-running session:"
+                                        echo "     User: ${anomaly.username}"
+                                        echo "     Age: ${anomaly.ageDays} days"
+                                        echo "     IP: ${anomaly.ipAddress}"
+                                    } else if (anomaly.type == 'MULTIPLE_IPS') {
+                                        echo "  🟡 Multiple IPs:"
+                                        echo "     User: ${anomaly.username}"
+                                        echo "     Sessions: ${anomaly.sessionCount}"
+                                        echo "     IPs: ${anomaly.ipAddresses.join(', ')}"
+                                    }
+                                    echo ""
+                                }
+                            }
+                            
+                            echo "=" * 80
+                            
+                            if (anomalies.size() > 0) {
+                                currentBuild.result = 'UNSTABLE'
+                            }
+                            break
+                            
+                        default:
+                            error("Unknown action: ${params.ACTION}")
+                    }
+                    
+                    echo "=" * 80
+                    echo "✅ Action '${params.ACTION}' completed successfully"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                echo "🎉 Session management completed successfully!"
+                
+                // Send notification for critical actions
+                if (params.ACTION == 'REVOKE_ALL_SESSIONS') {
+                    echo "📧 CRITICAL: All sessions were revoked. Notify operations team!"
+                }
+            }
+        }
+        failure {
+            echo "❌ Session management failed!"
+        }
+        always {
+            script {
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+            }
+        }
+    }
+}

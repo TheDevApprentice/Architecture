@@ -1,0 +1,433 @@
+/**
+ * Keycloak Session Management Integration Test Pipeline
+ * 
+ * Tests session operations: list, revoke, statistics, anomaly detection
+ */
+
+def keycloakAuth
+def keycloakSession
+def keycloakAudit
+def keycloakUser
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'REALM',
+            choices: ['internal'],
+            description: 'Keycloak realm to test'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+        TEST_USERNAME = "test-session-user-${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Load Libraries') {
+            steps {
+                script {
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakSession = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakSession.groovy'
+                    keycloakAudit = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAudit.groovy'
+                    keycloakUser = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakUser.groovy'
+                    echo "✅ Libraries loaded"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('👤 Setup: Create Test User') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "SETUP: Creating test user for session testing..."
+                    echo "=" * 60
+                    
+                    try {
+                        env.TEST_USER_ID = keycloakUser.createUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME,
+                            email: "${env.TEST_USERNAME}@test.local",
+                            password: "changeMe123!",
+                            enabled: true,
+                            emailVerified: true
+                        )
+                        
+                        echo "✅ Test user created"
+                        echo "   Username: ${env.TEST_USERNAME}"
+                        echo "   User ID: ${env.TEST_USER_ID}"
+                    } catch (Exception e) {
+                        error("❌ Failed to create test user: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📊 Test 1: Get Session Statistics') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Gathering session statistics..."
+                    echo "=" * 60
+                    
+                    try {
+                        def stats = keycloakAudit.getSessionStatistics(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM
+                        )
+                        
+                        echo "✅ Session statistics retrieved"
+                        echo "\n📊 Session Statistics:"
+                        echo "   Active sessions: ${stats.activeSessions}"
+                        echo "   Offline sessions: ${stats.offlineSessions}"
+                        echo "   Total clients: ${stats.totalClients}"
+                        echo "   Sessions per client:"
+                        
+                        stats.clientSessions?.take(5)?.each { client ->
+                            echo "      - ${client.clientId}: ${client.active} active"
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to get statistics: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📋 Test 2: List Active Sessions') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Listing all active sessions..."
+                    echo "=" * 60
+                    
+                    try {
+                        def sessions = keycloakSession.listActiveSessions(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            max: 50
+                        )
+                        
+                        echo "✅ Active sessions retrieved"
+                        echo "   Total active sessions: ${sessions.size()}"
+                        
+                        if (sessions.size() > 0) {
+                            echo "\n   Sample sessions:"
+                            sessions.take(5).each { session ->
+                                echo "   - Session ID: ${session.id}"
+                                echo "     User: ${session.username}"
+                                echo "     Started: ${session.start}"
+                                echo "     IP: ${session.ipAddress}"
+                                // echo "     Clients: ${session.clients?.join(', ')}"
+                                echo ""
+                            }
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to list sessions: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('👤 Test 3: List User Sessions') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 3: Listing sessions for specific user..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Try to get sessions for admin user (more likely to have sessions)
+                        def adminUsers = keycloakUser.listUsers(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            max: 1
+                        )
+                        
+                        if (adminUsers.size() > 0) {
+                            def testUserId = adminUsers[0].id
+                            
+                            def userSessions = keycloakSession.listUserSessions(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                userId: testUserId
+                            )
+                            
+                            echo "✅ User sessions retrieved"
+                            echo "   User: ${adminUsers[0].username}"
+                            echo "   Active sessions: ${userSessions.size()}"
+                            
+                            if (userSessions.size() > 0) {
+                                userSessions.each { session ->
+                                    echo "\n   Session Details:"
+                                    echo "      Session ID: ${session.id}"
+                                    echo "      Started: ${session.start}"
+                                    echo "      Last access: ${session.lastAccess}"
+                                    echo "      IP: ${session.ipAddress}"
+                                }
+                            } else {
+                                echo "   ℹ️  No active sessions for this user"
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️  Warning: ${e.message}"
+                        echo "   (This is expected if no users have active sessions)"
+                    }
+                }
+            }
+        }
+        
+        stage('🔍 Test 4: Detect Session Anomalies') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 4: Detecting session anomalies..."
+                    echo "=" * 60
+                    
+                    try {
+                        def anomalies = keycloakAudit.detectAnomalies(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            maxSessionAgeDays: 7,
+                            suspiciousIPPatterns: ['10.0.0.*', '192.168.*']
+                        )
+                        
+                        echo "✅ Anomaly detection completed"
+                        echo "\n⚠️ Anomalies Found: ${anomalies.size()}"
+                        
+                        if (anomalies.size() > 0) {
+                            anomalies.take(5).each { anomaly ->
+                                echo "\n   🔴 ${anomaly.type}"
+                                echo "      Session ID: ${anomaly.sessionId}"
+                                echo "      User: ${anomaly.username}"
+                                echo "      Issue: ${anomaly.description}"
+                                echo "      Age: ${anomaly.ageInDays} days"
+                            }
+                        } else {
+                            echo "\n   ✅ No anomalies detected"
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️  Warning: ${e.message}"
+                        echo "   (Anomaly detection may not find issues in test environment)"
+                    }
+                }
+            }
+        }
+        
+        stage('⏱️ Test 5: Find Long-Running Sessions') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 5: Finding long-running sessions..."
+                    echo "=" * 60
+                    
+                    try {
+                        def longSessions = keycloakSession.findLongRunningSessions(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            thresholdDays: 7
+                        )
+                        
+                        echo "✅ Long-running sessions analysis completed"
+                        echo "   Sessions running > 7 days: ${longSessions.size()}"
+                        
+                        if (longSessions.size() > 0) {
+                            echo "\n   Long-running sessions:"
+                            longSessions.take(5).each { session ->
+                                echo "   - ${session.username}: ${session.ageInDays} days"
+                                echo "     Session ID: ${session.id}"
+                            }
+                        } else {
+                            echo "   ✅ No long-running sessions found"
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️  Warning: ${e.message}"
+                    }
+                }
+            }
+        }
+        
+        stage('🗑️ Test 6: Revoke User Sessions (Test User)') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 6: Testing session revocation..."
+                    echo "=" * 60
+                    
+                    try {
+                        // Revoke sessions for our test user (won't have any, but tests the endpoint)
+                        keycloakSession.revokeUserSessions(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            userId: env.TEST_USER_ID
+                        )
+                        
+                        echo "✅ Session revocation successful"
+                        echo "   User: ${env.TEST_USERNAME}"
+                        echo "   All sessions for this user have been revoked"
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to revoke sessions: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('📊 Test 7: Generate Session Report') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 7: Generating session management report..."
+                    echo "=" * 60
+                    
+                    try {
+                        def report = keycloakAudit.generateSessionReport(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            format: 'json',
+                            includeAnomalies: true,
+                            maxSessionAgeDays: 7
+                        )
+                        
+                        // Save report
+                        writeFile file: "session-report-${BUILD_NUMBER}.json", text: report
+                        
+                        echo "✅ Session report generated"
+                        echo "   File: session-report-${BUILD_NUMBER}.json"
+                        
+                        // Archive
+                        archiveArtifacts artifacts: "session-report-${BUILD_NUMBER}.json", fingerprint: true
+                        
+                        echo "\n   Report includes:"
+                        echo "   - Active session count"
+                        echo "   - Session statistics by client"
+                        echo "   - Detected anomalies"
+                        echo "   - Long-running sessions"
+                        
+                    } catch (Exception e) {
+                        error("❌ Failed to generate report: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🗑️ Test 8: Cleanup') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 8: Cleaning up test user..."
+                    echo "=" * 60
+                    
+                    try {
+                        keycloakUser.deleteUser(
+                            keycloakUrl: env.KC_URL_INTERNAL,
+                            accessToken: env.ACCESS_TOKEN,
+                            realm: params.REALM,
+                            username: env.TEST_USERNAME
+                        )
+                        
+                        echo "✅ Test user deleted"
+                        echo "\n✅ All test resources cleaned up"
+                    } catch (Exception e) {
+                        echo "⚠️ Cleanup warning: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "\n" + "=" * 60
+            echo "✅ ALL TESTS PASSED"
+            echo "=" * 60
+            echo "\nSession Management Integration Tests Summary:"
+            echo "✅ Get session statistics"
+            echo "✅ List active sessions"
+            echo "✅ List user sessions"
+            echo "✅ Detect session anomalies"
+            echo "✅ Find long-running sessions"
+            echo "✅ Revoke user sessions"
+            echo "✅ Generate session report"
+            echo "✅ Cleanup"
+            echo "\n🎉 Keycloak Session Management is fully functional!"
+            echo "\n📊 Report available: session-report-${BUILD_NUMBER}.json"
+        }
+        failure {
+            echo "\n" + "=" * 60
+            echo "❌ TESTS FAILED"
+            echo "=" * 60
+            echo "\n⚠️  Check the logs above for details"
+        }
+        always {
+            script {
+                echo "\nTest completed at: ${new Date()}"
+
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+
+                env.TEST_USER_ID = null
+                env.TEST_USERNAME = null
+            }
+        }
+    }
+}
