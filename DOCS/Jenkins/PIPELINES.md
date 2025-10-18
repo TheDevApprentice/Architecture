@@ -1,4 +1,4 @@
-# 🔄 Jenkins Pipelines - Documentation Complète v0.2.0
+# 🔄 Jenkins Pipelines - Documentation Complète
 
 ## 📋 Table des Matières
 
