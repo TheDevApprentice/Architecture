@@ -1,0 +1,487 @@
+/**
+ * Keycloak Client Management Pipeline
+ * 
+ * CRUD operations for Keycloak clients (OIDC/SAML applications)
+ */
+
+// Load Keycloak library functions
+def keycloakAuth
+def keycloakClient
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: [
+                'CREATE_CLIENT',
+                'CREATE_FROM_TEMPLATE',
+                'UPDATE_CLIENT',
+                'DELETE_CLIENT',
+                'LIST_CLIENTS',
+                'GET_CLIENT',
+                'GET_CLIENT_SECRET',
+                'REGENERATE_SECRET',
+                'ENABLE_CLIENT',
+                'DISABLE_CLIENT'
+            ],
+            description: 'Action to perform'
+        )
+        string(
+            name: 'REALM',
+            defaultValue: 'internal',
+            description: 'Keycloak realm'
+        )
+        string(
+            name: 'CLIENT_ID',
+            defaultValue: '',
+            description: 'Client ID (e.g., my-web-app)'
+        )
+        choice(
+            name: 'TEMPLATE',
+            choices: [
+                'custom',
+                'web-app',
+                'spa',
+                'backend-service',
+                'mobile-app'
+            ],
+            description: 'Client template (for CREATE_FROM_TEMPLATE)'
+        )
+        choice(
+            name: 'PROTOCOL',
+            choices: ['openid-connect', 'saml'],
+            description: 'Protocol (for CREATE_CLIENT)'
+        )
+        booleanParam(
+            name: 'PUBLIC_CLIENT',
+            defaultValue: false,
+            description: 'Public client (no secret required, e.g., SPA)'
+        )
+        text(
+            name: 'REDIRECT_URIS',
+            defaultValue: '',
+            description: 'Redirect URIs (one per line)\nExample:\nhttp://localhost:3000/*\nhttps://myapp.com/*'
+        )
+        text(
+            name: 'WEB_ORIGINS',
+            defaultValue: '',
+            description: 'Web origins for CORS (one per line)\nExample:\nhttp://localhost:3000\nhttps://myapp.com'
+        )
+        string(
+            name: 'DESCRIPTION',
+            defaultValue: '',
+            description: 'Client description'
+        )
+        booleanParam(
+            name: 'SERVICE_ACCOUNTS_ENABLED',
+            defaultValue: false,
+            description: 'Enable service accounts (for backend services)'
+        )
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'Preview changes without executing (for destructive actions)'
+        )
+    }
+    
+    environment {
+        KC_URL_INTERNAL = "${KC_URL_INTERNAL}"
+        KC_CLIENT_ID = "${KC_CLIENT_ID_JENKINS_AUTOMATION}"
+        KC_CLIENT_SECRET = "${KC_SECRET_JENKINS_AUTOMATION}"
+    }
+    
+    stages {
+        stage('Load Keycloak Library') {
+            steps {
+                script {
+                    // Load library scripts from filesystem
+                    keycloakAuth = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakAuth.groovy'
+                    keycloakClient = load '/var/jenkins_home/workflow-libs/keycloak-lib/vars/keycloakClient.groovy'
+                    echo "✅ Keycloak library loaded successfully"
+                }
+            }
+        }
+        
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    echo "🔍 Validating parameters..."
+                    
+                    if (!params.REALM) {
+                        error("REALM parameter is required")
+                    }
+                    
+                    // Actions requiring CLIENT_ID
+                    def actionsRequiringClient = [
+                        'UPDATE_CLIENT', 'DELETE_CLIENT', 'GET_CLIENT',
+                        'GET_CLIENT_SECRET', 'REGENERATE_SECRET',
+                        'ENABLE_CLIENT', 'DISABLE_CLIENT'
+                    ]
+                    
+                    if (params.ACTION in actionsRequiringClient && !params.CLIENT_ID) {
+                        error("CLIENT_ID is required for ${params.ACTION}")
+                    }
+                    
+                    if (params.ACTION in ['CREATE_CLIENT', 'CREATE_FROM_TEMPLATE'] && !params.CLIENT_ID) {
+                        error("CLIENT_ID is required for creating a client")
+                    }
+                    
+                    echo "✅ Parameters validated successfully"
+                }
+            }
+        }
+        
+        stage('🔍 Keycloak Connectivity') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 1: Checking Keycloak connectivity..."
+                    echo "=" * 60
+                    
+                    try {
+                        def wellKnownUrl = "http://${env.KC_URL_INTERNAL}/realms/${params.REALM}/.well-known/openid-configuration"
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${wellKnownUrl}",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            echo "✅ Keycloak is accessible"
+                            // echo "DEV : URL: ${wellKnownUrl}"
+                        } else {
+                            error("❌ Keycloak returned HTTP ${response}")
+                        }
+                    } catch (Exception e) {
+                        error("❌ Failed to connect to Keycloak: ${e.message}")
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Service Account Authentication') {
+            steps {
+                script {
+                    echo "=" * 60
+                    echo "TEST 2: Authenticating to Keycloak..."
+                    echo "=" * 60
+                    
+                    env.ACCESS_TOKEN = keycloakAuth.getServiceAccountToken(
+                        keycloakUrl: env.KC_URL_INTERNAL,
+                        clientId: env.KC_CLIENT_ID,
+                        clientSecret: env.KC_CLIENT_SECRET,
+                        realm: params.REALM
+                    )
+                    
+                    echo "✅ Authentication successful"
+                }
+            }
+        }
+        
+        stage('Execute Action') {
+            steps {
+                script {
+                    echo "🚀 Executing action: ${params.ACTION}"
+                    echo "=" * 80
+                    
+                    switch(params.ACTION) {
+                        case 'CREATE_CLIENT':
+                            def redirectUris = params.REDIRECT_URIS ? 
+                                params.REDIRECT_URIS.split('\n').collect { it.trim() }.findAll { it } : []
+                            def webOrigins = params.WEB_ORIGINS ? 
+                                params.WEB_ORIGINS.split('\n').collect { it.trim() }.findAll { it } : []
+                            
+                            def clientUuid = keycloakClient.createClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID,
+                                protocol: params.PROTOCOL,
+                                publicClient: params.PUBLIC_CLIENT,
+                                redirectUris: redirectUris,
+                                webOrigins: webOrigins,
+                                description: params.DESCRIPTION,
+                                serviceAccountsEnabled: params.SERVICE_ACCOUNTS_ENABLED
+                            )
+                            
+                            echo "✅ Client '${params.CLIENT_ID}' created successfully"
+                            echo "   UUID: ${clientUuid}"
+                            echo "   Protocol: ${params.PROTOCOL}"
+                            echo "   Public: ${params.PUBLIC_CLIENT}"
+                            
+                            if (!params.PUBLIC_CLIENT) {
+                                echo "🔐 Retrieving client secret..."
+                                def secret = keycloakClient.getClientSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
+                                    accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
+                                    clientId: params.CLIENT_ID
+                                )
+                                echo "✅ Client secret: ********${secret[-4..-1]}"
+                                echo "⚠️  IMPORTANT: Save the client secret securely!"
+                            }
+                            break
+                            
+                        case 'CREATE_FROM_TEMPLATE':
+                            if (params.TEMPLATE == 'custom') {
+                                error("Please select a template or use CREATE_CLIENT for custom configuration")
+                            }
+                            
+                            def redirectUris = params.REDIRECT_URIS ? 
+                                params.REDIRECT_URIS.split('\n').collect { it.trim() }.findAll { it } : []
+                            
+                            def clientUuid = keycloakClient.createClientFromTemplate(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID,
+                                template: params.TEMPLATE,
+                                redirectUris: redirectUris
+                            )
+                            
+                            echo "✅ Client '${params.CLIENT_ID}' created from template '${params.TEMPLATE}'"
+                            echo "   UUID: ${clientUuid}"
+                            
+                            // Get secret for non-public clients
+                            def client = keycloakClient.getClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID
+                            )
+                            
+                            if (!client.publicClient) {
+                                def secret = keycloakClient.getClientSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
+                                    accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
+                                    clientId: params.CLIENT_ID
+                                )
+                                echo "✅ Client secret: ********${secret[-4..-1]}"
+                                echo "⚠️  IMPORTANT: Save the client secret securely!"
+                            }
+                            break
+                            
+                        case 'UPDATE_CLIENT':
+                            def redirectUris = params.REDIRECT_URIS ? 
+                                params.REDIRECT_URIS.split('\n').collect { it.trim() }.findAll { it } : null
+                            def webOrigins = params.WEB_ORIGINS ? 
+                                params.WEB_ORIGINS.split('\n').collect { it.trim() }.findAll { it } : null
+                            
+                            keycloakClient.updateClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID,
+                                redirectUris: redirectUris,
+                                webOrigins: webOrigins,
+                                description: params.DESCRIPTION ?: null
+                            )
+                            
+                            echo "✅ Client '${params.CLIENT_ID}' updated successfully"
+                            break
+                            
+                        case 'DELETE_CLIENT':
+                            // Approval gate for destructive action
+                            if (!params.DRY_RUN) {
+                                def client = keycloakClient.getClient(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
+                                    accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
+                                    clientId: params.CLIENT_ID
+                                )
+                                
+                                echo "⚠️  About to DELETE client:"
+                                echo "   Client ID: ${params.CLIENT_ID}"
+                                echo "   UUID: ${client.id}"
+                                echo "   Enabled: ${client.enabled}"
+                                
+                                try {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        input message: "⚠️  Are you sure you want to DELETE client '${params.CLIENT_ID}'?",
+                                              ok: 'DELETE',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Delete operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                                
+                                keycloakClient.deleteClient(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
+                                    accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
+                                    clientId: params.CLIENT_ID
+                                )
+                                
+                                echo "✅ Client '${params.CLIENT_ID}' deleted successfully"
+                            } else {
+                                echo "🔍 DRY RUN: Would delete client '${params.CLIENT_ID}'"
+                            }
+                            break
+                            
+                        case 'LIST_CLIENTS':
+                            def clients = keycloakClient.listClients(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM
+                            )
+                            
+                            echo "📋 Clients in realm '${params.REALM}':"
+                            echo "=" * 80
+                            clients.each { client ->
+                                def type = client.publicClient ? 'Public' : 'Confidential'
+                                def status = client.enabled ? '✅' : '❌'
+                                echo "  ${status} ${client.clientId} (${type})"
+                                echo "      Protocol: ${client.protocol}"
+                                if (client.redirectUris && client.redirectUris.size() > 0) {
+                                    // Convert to list and join manually to avoid sandbox issues
+                                    def uris = client.redirectUris.collect { it.toString() }
+                                    echo "      Redirect URIs: ${uris.size()} configured"
+                                    uris.take(3).each { uri ->
+                                        echo "        - ${uri}"
+                                    }
+                                    if (uris.size() > 3) {
+                                        echo "        ... and ${uris.size() - 3} more"
+                                    }
+                                }
+                            }
+                            echo "=" * 80
+                            echo "Total: ${clients.size()} clients"
+                            break
+                            
+                        case 'GET_CLIENT':
+                            def client = keycloakClient.getClient(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID
+                            )
+                            
+                            echo "📊 Client Details:"
+                            echo "=" * 80
+                            echo "  Client ID: ${client.clientId}"
+                            echo "  UUID: ${client.id}"
+                            echo "  Protocol: ${client.protocol}"
+                            echo "  Public: ${client.publicClient}"
+                            echo "  Enabled: ${client.enabled}"
+                            echo "  Service Accounts: ${client.serviceAccountsEnabled}"
+                            echo "  Direct Access Grants: ${client.directAccessGrantsEnabled}"
+                            echo "  Standard Flow: ${client.standardFlowEnabled}"
+                            echo "  Implicit Flow: ${client.implicitFlowEnabled}"
+                            if (client.description) {
+                                echo "  Description: ${client.description}"
+                            }
+                            if (client.redirectUris && client.redirectUris.size() > 0) {
+                                echo "  Redirect URIs:"
+                                client.redirectUris.each { uri ->
+                                    echo "    - ${uri}"
+                                }
+                            }
+                            if (client.webOrigins && client.webOrigins.size() > 0) {
+                                echo "  Web Origins:"
+                                client.webOrigins.each { origin ->
+                                    echo "    - ${origin}"
+                                }
+                            }
+                            echo "=" * 80
+                            break
+                            
+                        case 'GET_CLIENT_SECRET':
+                            def secret = keycloakClient.getClientSecret(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID
+                            )
+                            
+                            echo "🔐 Client Secret:"
+                            echo "=" * 80
+                            echo "  Client ID: ${params.CLIENT_ID}"
+                            echo "  Secret: ********${secret[-4..-1]}"
+                            echo "=" * 80
+                            echo "⚠️  Full secret is available in Jenkins credentials or logs"
+                            echo "⚠️  Never share or commit secrets to version control!"
+                            break
+                            
+                        case 'REGENERATE_SECRET':
+                            // Approval gate for secret regeneration
+                            if (!params.DRY_RUN) {
+                                echo "⚠️  About to REGENERATE secret for client '${params.CLIENT_ID}'"
+                                echo "⚠️  This will invalidate the current secret!"
+                                
+                                try {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        input message: "⚠️  Regenerate secret for '${params.CLIENT_ID}'? Current secret will be invalidated!",
+                                              ok: 'REGENERATE',
+                                              submitter: 'admin'
+                                    }
+                                } catch (Exception e) {
+                                    echo "❌ Regenerate operation cancelled by user"
+                                    error("Operation cancelled")
+                                }
+                                
+                                def newSecret = keycloakClient.regenerateSecret(
+                                    keycloakUrl: env.KC_URL_INTERNAL,
+                                    accessToken: env.ACCESS_TOKEN,
+                                    realm: params.REALM,
+                                    clientId: params.CLIENT_ID
+                                )
+                                
+                                echo "✅ New secret generated for client '${params.CLIENT_ID}'"
+                                echo "🔐 New secret: ********${newSecret[-4..-1]}"
+                                echo "⚠️  IMPORTANT: Update your application configuration with the new secret!"
+                            } else {
+                                echo "🔍 DRY RUN: Would regenerate secret for client '${params.CLIENT_ID}'"
+                            }
+                            break
+                            
+                        case 'ENABLE_CLIENT':
+                            keycloakClient.setClientEnabled(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID,
+                                enabled: true
+                            )
+                            echo "✅ Client '${params.CLIENT_ID}' enabled successfully"
+                            break
+                            
+                        case 'DISABLE_CLIENT':
+                            keycloakClient.setClientEnabled(
+                                keycloakUrl: env.KC_URL_INTERNAL,
+                                accessToken: env.ACCESS_TOKEN,
+                                realm: params.REALM,
+                                clientId: params.CLIENT_ID,
+                                enabled: false
+                            )
+                            echo "✅ Client '${params.CLIENT_ID}' disabled successfully"
+                            break
+                            
+                        default:
+                            error("Unknown action: ${params.ACTION}")
+                    }
+                    
+                    echo "=" * 80
+                    echo "✅ Action '${params.ACTION}' completed successfully"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+        always {
+            script {
+                // Clean sensitive data
+                env.ACCESS_TOKEN = null
+            }
+        }
+    }
+}

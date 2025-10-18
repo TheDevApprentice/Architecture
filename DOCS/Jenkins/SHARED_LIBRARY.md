@@ -1,10 +1,17 @@
-# 📚 Bibliothèque Partagée Keycloak - API Reference
+# 📚 Bibliothèque Partagée Keycloak - API Reference v0.2.0
+
+**Version:** v0.2.0 - Keycloak Management Automation Suite  
+**Date:** October 18, 2025
 
 ## 📋 Table des Matières
 
 - [Vue d'ensemble](#vue-densemble)
 - [Module keycloakAuth.groovy](#module-keycloakauthgroovy)
 - [Module keycloakUser.groovy](#module-keycloakusergroovy)
+- [Module keycloakGroup.groovy](#module-keycloakgroupgroovy)
+- [Module keycloakClient.groovy](#module-keycloakclientgroovy)
+- [Module keycloakSession.groovy](#module-keycloaksessiongroovy)
+- [Module keycloakAudit.groovy](#module-keycloakauditgroovy)
 - [Utilisation dans les Pipelines](#utilisation-dans-les-pipelines)
 - [Exemples](#exemples)
 
@@ -12,21 +19,31 @@
 
 ## Vue d'ensemble
 
-La **bibliothèque partagée Keycloak** encapsule les interactions avec l'API REST Admin de Keycloak.
+La **bibliothèque partagée Keycloak** encapsule les interactions avec l'API REST Admin de Keycloak. Version v0.2.0 introduit 4 nouveaux modules pour une couverture complète de la gestion Keycloak.
 
-### 📦 Modules
+### 📦 Modules (6 total)
 
-| Module | Fonctions | Objectif |
-|--------|-----------|----------|
-| **keycloakAuth.groovy** | 3 | Authentification et tokens |
-| **keycloakUser.groovy** | 9 | Gestion utilisateurs |
+| Module | Lignes | Fonctions | Objectif |
+|--------|--------|-----------|----------|
+| **keycloakAuth.groovy** | 80 | 2 | Authentification et tokens |
+| **keycloakUser.groovy** | 403 | 6 | Gestion utilisateurs |
+| **keycloakGroup.groovy** | 550 | 9 | Gestion groupes et membres |
+| **keycloakClient.groovy** | 527 | 10 | Gestion clients OAuth2/OIDC |
+| **keycloakSession.groovy** | 420 | 6 | Monitoring et contrôle sessions |
+| **keycloakAudit.groovy** | 380 | 15 | Audit et compliance |
+
+**Total:** ~2,360 lignes de code réutilisable
 
 ### 📍 Emplacement
 
 ```
-/var/jenkins_home/workflow-libs/keycloak-lib/vars/
-├── keycloakAuth.groovy
-└── keycloakUser.groovy
+server/jenkins/config/shared-library/vars/
+├── keycloakAuth.groovy          (80 lines)
+├── keycloakUser.groovy          (403 lines)
+├── keycloakGroup.groovy         (550 lines)
+├── keycloakClient.groovy        (527 lines)
+├── keycloakSession.groovy       (420 lines)
+└── keycloakAudit.groovy         (380 lines)
 ```
 
 ### 🔄 Chargement

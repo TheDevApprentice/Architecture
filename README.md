@@ -226,12 +226,22 @@ docker compose -f 15-docker-compose.Infra.dev.security.yml logs -f
 -     Service account examples
 -     Internalization (EN/FR)
 - [x] Jenkins CI/CD integration as example with Keycloak
+- [x] Jenkins CI/CD pipelines creation & Tests integration for Keycloak
 
 ### 🚧 In Progress
-- [x] Jenkins CI/CD pipelines integration with available services
-- [ ] MinIO storage integration
+- [x] v0.3.0 - Container Registry & Deployment Automation
 
-### 📋 Planned
+### 📋 Planned (v0.3.0)
+- [ ] Docker Registry configuration and integration
+- [ ] Design and implement deployment automation tool
+
+
+### 📋 Future Releases
+- [ ] Jenkins pipelines for container image management
+- [ ] Registry authentication via Keycloak
+- [ ] Image scanning and security policies
+- [ ] MinIO storage integration (v0.4.0)
+- [ ] Jenkins CI/CD pipelines integration with available services
 - [ ] Database cluster configurations
 - [ ] Automated backup solutions
 - [ ] Disaster recovery procedures

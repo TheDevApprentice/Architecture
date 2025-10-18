@@ -49,13 +49,18 @@ def createUser(Map config) {
     
     def createUrl = "http://${keycloakUrl}/admin/realms/${realm}/users"
     
+    // Write JSON to temporary file to avoid exposing password in shell command
+    def tmpFile = "/tmp/keycloak-user-${username}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: userJson
+    
     // Create user
     def createResponse = sh(
         script: """
             curl -s -w "\\n%{http_code}" -X POST "${createUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${userJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()
@@ -198,12 +203,17 @@ def resetPassword(Map config) {
     
     def resetUrl = "http://${keycloakUrl}/admin/realms/${realm}/users/${userId}/reset-password"
     
+    // Write JSON to temporary file to avoid exposing password in shell command
+    def tmpFile = "/tmp/keycloak-password-${username}-${System.currentTimeMillis()}.json"
+    writeFile file: tmpFile, text: credentialJson
+    
     def response = sh(
         script: """
             curl -s -w "\\n%{http_code}" -X PUT "${resetUrl}" \\
                 -H "Authorization: Bearer ${accessToken}" \\
                 -H "Content-Type: application/json" \\
-                -d '${credentialJson}'
+                -d @${tmpFile}
+            rm -f ${tmpFile}
         """,
         returnStdout: true
     ).trim()
@@ -281,7 +291,7 @@ def listUsers(Map config) {
         returnStdout: true
     ).trim()
     
-    def users = readJSON text: response
+    def users = readJSON(text: response)
     
     echo "Found ${users.size()} users"
     
@@ -309,7 +319,7 @@ def getUserId(Map config) {
         returnStdout: true
     ).trim()
     
-    def users = readJSON text: response
+    def users = readJSON(text: response)
     
     if (users.size() == 0) {
         error("User '${username}' not found in realm '${realm}'")
@@ -339,7 +349,7 @@ def getGroupId(Map config) {
         returnStdout: true
     ).trim()
     
-    def groups = readJSON text: response
+    def groups = readJSON(text: response)
     def group = groups.find { it.name == groupName }
     
     if (!group) {

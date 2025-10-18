@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.0.0] - 2025-09-26 to 2025-10-13
+## v[0.0.0] - 2025-09-26 to 2025-10-13
 
 ### 🔬 Development Phase & Exploration
 
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## v0.1.0 (2025-10-14)
+## v[0.1.0] (2025-10-14)
  
 ### 🎉 First dev stable testable configuration
 
@@ -160,17 +160,100 @@ This is the first tagged release. Previous development was exploratory and inclu
 
 ---
 
+## v[0.2.0] (2025-10-18)
+
+### 🚀 Keycloak Management Automation - Complete Pipeline Suite
+
+This release introduces a comprehensive **Keycloak Management Automation** system for the `internal` realm, providing Jenkins pipelines for complete lifecycle management of users, groups, clients, and sessions, along with compliance reporting and automated testing capabilities.
+
+#### ✨ New Features
+
+**Core Management Pipelines (4)**
+- ✅ **User Management Pipeline** - CRUD operations for users (6 actions: CREATE, UPDATE, DELETE, LIST, RESET_PASSWORD, ADD_TO_GROUP)
+- ✅ **Group Management Pipeline** - Group and membership management with hierarchical support (9 actions: CREATE, UPDATE, DELETE, LIST, GET, ADD_MEMBERS, REMOVE_MEMBERS, LIST_MEMBERS, DETECT_ORPHANS)
+- ✅ **Client Management Pipeline** - OAuth2/OIDC client management with templates (10 actions: CREATE, CREATE_FROM_TEMPLATE, UPDATE, DELETE, LIST, GET, GET_SECRET, REGENERATE_SECRET, ENABLE, DISABLE)
+- ✅ **Session Management Pipeline** - Session monitoring and control with anomaly detection (6 actions: STATISTICS, LIST_ALL, LIST_USER, DETECT_ANOMALIES, REVOKE_USER, REVOKE_ALL)
+
+**Reporting Pipelines (2)**
+- ✅ **Security Audit Pipeline** - Comprehensive security assessment (9 audit checks: unverified emails, disabled accounts, weak policies, etc.)
+- ✅ **Compliance Report Pipeline** - Governance and compliance reporting (6 report types: FULL_COMPLIANCE, ACCESS_REVIEW, PRIVILEGED_ACCOUNTS, PASSWORD_POLICY, CLIENT_SECRETS_AUDIT, MFA_ADOPTION)
+
+**Integration Test Pipelines (4)**
+- ✅ **User Management Tests** - 7 integration tests with automatic cleanup
+- ✅ **Group Management Tests** - 8 integration tests with automatic cleanup
+- ✅ **Client Management Tests** - 8 integration tests with automatic cleanup
+- ✅ **Session Management Tests** - 6 integration tests with automatic cleanup
+- ✅ **Total Test Coverage** - 42 integration tests validating all CRUD operations
+
+**Shared Library (6 modules)**
+- ✅ `keycloakAuth.groovy` - Authentication & token management
+- ✅ `keycloakUser.groovy` - User operations (403 lines)
+- ✅ `keycloakGroup.groovy` - Group operations (550 lines)
+- ✅ `keycloakClient.groovy` - Client operations (527 lines)
+- ✅ `keycloakSession.groovy` - Session operations (420 lines)
+- ✅ `keycloakAudit.groovy` - Audit & compliance functions (380 lines)
+
+#### 🔐 Security Enhancements
+
+- ✅ Service account `jenkins-automation` with minimal required permissions
+- ✅ Token-based authentication with 5-minute expiration
+- ✅ Passwords never logged or exposed (encrypted parameters)
+- ✅ Client secrets masked in logs (only last 4 characters shown)
+- ✅ Temporary files for sensitive JSON payloads (auto-deleted)
+- ✅ Manual confirmation gates for destructive operations (deletion, secret regeneration, session revocation)
+- ✅ DRY_RUN mode for safe testing without side effects
+
+#### 🐛 Bug Fixes
+
+**Critical Issues Resolved**
+1. **JSON Parsing Error** - Fixed "Cannot parse the JSON" errors by using temporary files instead of inline JSON in curl commands
+2. **Password Parameter Encryption** - Resolved Jenkins password parameter encryption issues by converting to string with `.toString()`
+3. **Sandbox Security Violation** - Fixed `RejectedAccessException` by replacing `.join()` with sandbox-compatible alternatives
+4. **Parameter Cleanup Error** - Removed invalid `parameters.each` cleanup code causing `MissingPropertyException`
+
+**Enhancements**
+- ✅ Automatic conversion of attribute values to Keycloak array format
+- ✅ Improved error messages and validation
+- ✅ Enhanced logging with progress indicators
+- ✅ DRY_RUN support for safe testing
+
+#### 📚 Documentation
+
+- ✅ `KEYCLOAK_PIPELINES_TEST_PLAN.md` - Complete test plan with 42 test cases
+- ✅ `CHANGELOG_v0.2.0.md` - Detailed release notes with technical architecture
+
+#### 📊 Statistics
+
+- **18 new files** created (~6,700 lines of code)
+- **10 Jenkins pipelines** (4 management, 2 reporting, 4 testing)
+- **6 shared library modules** (2,360 lines total)
+- **42 integration tests** with automatic cleanup
+- **31 total actions** across all management pipelines
+
+#### 🎯 Objectives Achieved
+
+- ✅ Automate repetitive Keycloak administration tasks
+- ✅ Standardize user, group, and client management workflows
+- ✅ Enhance security through service account authentication
+- ✅ Improve compliance with audit and reporting capabilities
+- ✅ Ensure reliability through comprehensive integration tests
+
+---
+
 ## Future Releases (to be redefined if needed)
 
-### Planned for v0.2.0
-- [ ] Complete Jenkins CI/CD pipeline usage for Keycloak
-- [ ] Complete Jenkins CI/CD pipeline integration Tests for Keycloak
+### Planned for v0.3.0 - "Container Registry & Deployment Automation"
+- [ ] Docker Registry configuration and integration
+- [ ] Design deployment automation tool architecture
+- [ ] Implement deployment automation tool (CLI/Web interface)
 
-### Planned for v0.3.0
-- [ ] Complete MinIO integration with applications
-- [ ] Complete Jenkins CI/CD pipeline integration for MinIO
 
 ### Planned for v0.4.0
+- [ ] Jenkins pipelines for container image management
+- [ ] Registry authentication via Keycloak
+- [ ] Image scanning and security policies
+- [ ] Complete MinIO integration with applications
+- [ ] Complete Jenkins CI/CD pipeline integration for MinIO
 - [ ] Redis cluster configuration for HA
 
 ### Planned for v0.5.0
