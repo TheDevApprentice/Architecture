@@ -243,10 +243,11 @@ This release introduces a comprehensive **Keycloak Management Automation** syste
 ## Future Releases (to be redefined if needed)
 
 ### Planned for v0.3.0
-- [ ] Complete MinIO integration with applications
-- [ ] Complete Jenkins CI/CD pipeline integration for MinIO
+- [ ] Reflexion
 
 ### Planned for v0.4.0
+- [ ] Complete MinIO integration with applications
+- [ ] Complete Jenkins CI/CD pipeline integration for MinIO
 - [ ] Redis cluster configuration for HA
 
 ### Planned for v0.5.0
