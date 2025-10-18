@@ -242,10 +242,16 @@ This release introduces a comprehensive **Keycloak Management Automation** syste
 
 ## Future Releases (to be redefined if needed)
 
-### Planned for v0.3.0
-- [ ] Reflexion
+### Planned for v0.3.0 - "Container Registry & Deployment Automation"
+- [ ] Docker Registry configuration and integration
+- [ ] Design deployment automation tool architecture
+- [ ] Implement deployment automation tool (CLI/Web interface)
+
 
 ### Planned for v0.4.0
+- [ ] Jenkins pipelines for container image management
+- [ ] Registry authentication via Keycloak
+- [ ] Image scanning and security policies
 - [ ] Complete MinIO integration with applications
 - [ ] Complete Jenkins CI/CD pipeline integration for MinIO
 - [ ] Redis cluster configuration for HA
