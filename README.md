@@ -226,12 +226,14 @@ docker compose -f 15-docker-compose.Infra.dev.security.yml logs -f
 -     Service account examples
 -     Internalization (EN/FR)
 - [x] Jenkins CI/CD integration as example with Keycloak
+- [x] Jenkins CI/CD pipelines integration for Keycloak
 
 ### 🚧 In Progress
-- [x] Jenkins CI/CD pipelines integration with available services
-- [ ] MinIO storage integration
+- [ ] Reflexion
 
 ### 📋 Planned
+- [ ] Jenkins CI/CD pipelines integration with available services
+- [ ] MinIO storage integration
 - [ ] Database cluster configurations
 - [ ] Automated backup solutions
 - [ ] Disaster recovery procedures
