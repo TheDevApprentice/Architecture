@@ -14,7 +14,7 @@ jenkins:
       emailFieldName: "email"
       # advanced configuration
       logoutFromOpenidProvider: true
-      rootURLFromRequest: true
+      rootURLFromRequest: false
       sendScopesInTokenRequest: true
       postLogoutRedirectUrl: "http://${JENKINS_URL}"
       # Security (Keycloak over HTTP in dev)
