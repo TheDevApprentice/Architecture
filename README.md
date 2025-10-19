@@ -235,7 +235,6 @@ docker compose -f 15-docker-compose.Infra.dev.security.yml logs -f
 - [ ] Docker Registry configuration and integration
 - [ ] Design and implement deployment automation tool
 
-
 ### 📋 Future Releases
 - [ ] Jenkins pipelines for container image management
 - [ ] Registry authentication via Keycloak
