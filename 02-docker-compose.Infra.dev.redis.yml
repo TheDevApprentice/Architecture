@@ -49,10 +49,32 @@ volumes:
 
 networks:
   proxy:
-    external: true
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
   dbnet:
-    external: true
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
   cachenet:
-    external: true
+    name: cachenet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.20.0/24
   stornet:
-    external: true
+    name: stornet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.30.0/24
+  keycloaknet:
+    name: keycloaknet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.40.0/24
