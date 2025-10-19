@@ -1,0 +1,296 @@
+name: base
+
+services:
+  # Reverse proxy / gateway (Traefik)
+  traefik:
+    build:
+      context: ./server/Traefik
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=${NODE_ENV}
+    image: traefik:latest
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
+      # - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  # Homepage
+  # homepage:
+  #   build:
+  #     context: ./server/Homepage
+  #     dockerfile: Dockerfile
+  #     args:
+  #       - TZ=${TZ}
+  #       - NODE_ENV=${NODE_ENV}
+  #       - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+  #   image: homepage:latest
+  #   container_name: homepage
+  #   volumes:
+  #     # # DEV only :
+  #     - ./server/Homepage/images:/app/public/images      # Répertoire des images localisé à côté du docker-compose
+  #     - ./server/Homepage/icons:/app/public/icons        # Répertoire des icônes localisé à côté du docker-compose
+  #     - ./server/Homepage/config:/app/config            # Répertoire des configurations localisé à côté du docker-compose
+  #     # #
+  #     - homepage_data:/app/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - proxy
+  #   restart: unless-stopped
+  #   # Limites de ressources optimisées pour homepage
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'     # Limite à 1 CPU au maximum
+  #         memory: 512M    # Limite à 512MB de mémoire (suffisant pour homepage)
+  #       reservations:
+  #         cpus: '0.2'     # Garantit au minimum 20% d'un CPU
+  #         memory: 256M    # Garantit au minimum 256MB de mémoire
+  #   labels:
+  #     - "traefik.enable=true"
+  #     # Route rule -> Homepage (HTTP)
+  #     - "traefik.http.routers.homepage.rule=Host(`homepage.${HOST}`)"
+  #     - "traefik.http.routers.homepage.entrypoints=web"
+  #     - "traefik.http.routers.homepage.priority=2"
+  #     - "traefik.http.routers.homepage.service=homepage"
+  #     - "traefik.http.services.homepage.loadbalancer.server.port=${HOMEPAGE_LOADBALENCER_SERVER_PORT}"
+  #     - "traefik.docker.network=proxy"
+
+  registry:
+    build:
+      context: ./server/registry
+      dockerfile: Dockerfile
+    image: registry-custom:latest
+    container_name: registry
+    # Expose port only in dev mode (set REGISTRY_HTTP_EXPOSE_ADDR="" in production to disable)
+    ports:
+      - "${REGISTRY_HTTP_EXPOSE_ADDR}:5000"  # Expose registry directly on localhost:5000 (only for dev)
+    environment:
+      # Registry credentials (auto-generate htpasswd)
+      REGISTRY_USERNAME: ${REGISTRY_USERNAME}
+      REGISTRY_PASSWORD: ${REGISTRY_PASSWORD}
+    volumes:
+      - registry_data:/var/lib/registry
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # Route -> Docker Registry API (HTTPS in production, HTTP in dev)
+      - "traefik.http.routers.registry.rule=Host(`${REGISTRY_URL}`)"
+      # Dev: HTTP (web) | Prod: HTTPS (websecure)
+      - "traefik.http.routers.registry.entrypoints=${REGISTRY_ENTRYPOINT}"
+      # TLS configuration (enabled in production via REGISTRY_TLS_ENABLED)
+      - "traefik.http.routers.registry.tls=${REGISTRY_TLS_ENABLED}"
+      - "traefik.http.routers.registry.tls.certresolver=${REGISTRY_TLS_CERTRESOLVER}"
+      - "traefik.http.routers.registry.priority=2"
+      - "traefik.http.routers.registry.service=registry"
+      - "traefik.http.routers.registry.middlewares=registry-cors"
+      - "traefik.http.services.registry.loadbalancer.server.port=${REGISTRY_HTTP_EXPOSE_ADDR}"
+      # CORS middleware for Registry UI
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolallowmethods=GET,HEAD,OPTIONS,DELETE"
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolallowheaders=Authorization,Accept,Cache-Control"
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolalloworiginlist=http://registry-ui.${HOST}"
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolallowcredentials=true"
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.registry-cors.headers.addvaryheader=true"
+      - "traefik.http.middlewares.registry-cors.headers.accesscontrolexposeheaders=Docker-Content-Digest"
+      - "traefik.docker.network=proxy"
+
+  # Optional web UI for the registry (only for dev)
+  registry-ui:
+    image: joxit/docker-registry-ui:latest
+    container_name: registry-ui
+    environment:
+      - REGISTRY_TITLE=Private Registry
+      - SINGLE_REGISTRY=true
+      - SHOW_CONTENT_DIGEST=true
+      # If your registry is exposed with TLS via Traefik, set the following URL
+      - REGISTRY_URL=http://${REGISTRY_URL}
+      # Enable authentication in UI
+      - REGISTRY_SECURED=true
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registryui.rule=Host(`registry-ui.${HOST}`)"
+      - "traefik.http.routers.registryui.entrypoints=web"
+      - "traefik.http.routers.registryui.priority=2"
+      - "traefik.http.routers.registryui.service=registryui"
+      - "traefik.http.services.registryui.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+
+  # Identity Provider - Keycloak (Quarkus)
+  keycloak:
+    build:
+      context: ./server/Keycloak
+      dockerfile: Dockerfile
+    image: keycloak:latest
+    container_name: keycloak
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      HOST: ${HOST}
+      KC_HTTP_ENABLED: "${KC_HTTP_ENABLED}"
+      KC_URL: ${KC_URL}
+      JENKINS_URL: ${JENKINS_URL}
+      KC_SECRET_JENKINS: ${KC_SECRET_JENKINS}
+      KC_CLIENT_ID_JENKINS: ${KC_CLIENT_ID_JENKINS}
+      KC_SECRET_JENKINS_AUTOMATION: ${KC_SECRET_JENKINS_AUTOMATION}
+      KC_CLIENT_ID_JENKINS_AUTOMATION: ${KC_CLIENT_ID_JENKINS_AUTOMATION}
+      # Database via ProxySQL on dbnet
+      KC_DB: ${KC_DB_TYPE}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_DB_URL: ${KC_DB_URL}
+      # Admin
+      KC_ADMIN_USERNAME: ${KC_ADMIN_USERNAME}
+      KC_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      # Reverse proxy awareness
+      KC_PROXY: ${KC_PROXY}
+      KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT}"
+      # KC_HOSTNAME_PORT: ${KC_HOSTNAME_PORT}
+      KC_METRICS_ENABLED: "${KC_METRICS_ENABLED}"
+      KC_HEALTH_ENABLED: "${KC_HEALTH_ENABLED}"
+      # OpenTelemetry traces -> OTel Collector -> Tempo
+      KC_FEATURES: ${KC_FEATURES}
+      KC_OPENTELEMETRY_ENDPOINT: ${KC_OPENTELEMETRY_ENDPOINT}
+      KC_OPENTELEMETRY_PROTOCOL: ${KC_OPENTELEMETRY_PROTOCOL}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`${KC_URL}`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=${KC_LOADBALENCER_SERVER_PORT}"
+      - "traefik.http.routers.keycloak.service=keycloak"
+      - "traefik.http.routers.keycloak.priority=100"
+      - "traefik.docker.network=proxy"
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - proxy
+      - keycloaknet
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+    # volumes:
+      # - keycloak_data:/opt/keycloak/data
+      # - ./server/Keycloak/config/themes:/opt/keycloak/themes
+
+  # Dedicated Postgres for Keycloak
+  postgres-keycloak:
+    build:
+      context: ./server/Keycloak/db
+      dockerfile: Dockerfile
+    image: postgres-keycloak:latest
+    container_name: postgres-keycloak
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      POSTGRES_DB: ${KC_DB_NAME}
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - keycloaknet
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+
+  jenkins:
+    container_name: jenkins
+    build:
+      context: ./server/jenkins
+      dockerfile: Dockerfile
+    image: jenkins-lts:latest
+    ports:
+      - "${JENKINS_AGENT_PORT}:50000"
+      - "${JENKINS_SSH_PORT}:2222"
+    environment:
+      - TZ=${TZ}
+      - HOST=${HOST}
+      - CASC_JENKINS_CONFIG=/usr/share/jenkins/ref/casc_configs/jenkins.yaml
+      - JENKINS_URL=${JENKINS_URL}
+      - KC_URL=${KC_URL}
+      - KC_URL_INTERNAL=${KC_URL_INTERNAL}
+      - KC_REALM=${KC_REALM}
+      - KC_ADMIN_USER=${KC_ADMIN_USERNAME}
+      - KC_ADMIN_PASSWORD=${KC_ADMIN_PASSWORD}
+      - KC_CLIENT_ID_JENKINS_AUTOMATION=${KC_CLIENT_ID_JENKINS_AUTOMATION}
+      - KC_SECRET_JENKINS_AUTOMATION=${KC_SECRET_JENKINS_AUTOMATION}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - JAVA_OPTS=${JAVA_OPTS}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+    extra_hosts:
+      - "${KC_URL}:host-gateway"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jenkins.rule=Host(`${JENKINS_URL}`)"
+      - "traefik.http.routers.jenkins.entrypoints=web"
+      - "traefik.http.services.jenkins.loadbalancer.server.port=${JENKINS_HTTP_PORT}"
+      - "traefik.http.routers.jenkins.service=jenkins"
+      - "traefik.http.routers.jenkins.priority=100"
+      - "traefik.docker.network=proxy"
+
+volumes:
+  homepage_data:
+  traefik_data:
+  registry_data:
+  keycloak_data:
+  postgres_keycloak_data:
+  jenkins_home:
+
+networks:
+  proxy:
+    name: proxy
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/24
+  dbnet:
+    name: dbnet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.10.0/24
+  cachenet:
+    name: cachenet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.20.0/24
+  stornet:
+    name: stornet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.30.0/24
+  keycloaknet:
+    name: keycloaknet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.40.0/24

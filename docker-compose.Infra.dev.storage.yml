@@ -1,0 +1,50 @@
+name: storage
+
+services:
+  minio:
+    build:
+      context: ./server/Minio
+      dockerfile: Dockerfile
+    image: minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_PROMETHEUS_AUTH_TYPE=${MINIO_PROMETHEUS_AUTH_TYPE}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    networks:
+      - proxy
+      - stornet
+    labels:
+      - "traefik.enable=true"
+      # Route /minio -> MinIO S3 API (HTTP)
+      - "traefik.http.routers.minio.rule=PathPrefix(`/minio`)"
+      - "traefik.http.routers.minio.entrypoints=web"
+      - "traefik.http.routers.minio.service=minio"
+      - "traefik.http.routers.minio.middlewares=minio-strip"
+      - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
+      - "traefik.http.services.minio.loadbalancer.server.port=${MINIO_PATH_LOADBALENCER_SERVER_PORT}"
+      - "traefik.http.routers.minio.priority=100"
+      # Route rule -> Minio (HTTP)
+      - "traefik.http.routers.minio-storage.rule=Host(`storage.${HOST}`)"
+      - "traefik.http.routers.minio-storage.entrypoints=web"
+      - "traefik.http.routers.minio-storage.priority=2"
+      - "traefik.http.routers.minio-storage.service=minio-storage"
+      - "traefik.http.services.minio-storage.loadbalancer.server.port=${MINIO_STORAGE_LOADBALENCER_SERVER_PORT}"
+      # Network
+      - "traefik.docker.network=proxy"
+
+volumes:
+  minio_data:
+
+networks:
+  proxy:
+    external: true
+  dbnet:
+    external: true
+  cachenet:
+    external: true
+  stornet:
+    external: true
