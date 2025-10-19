@@ -67,9 +67,9 @@ services:
       dockerfile: Dockerfile
     image: registry-custom:latest
     container_name: registry
-    # Expose port only in dev mode (comment out in production)
+    # Expose port only in dev mode (set REGISTRY_HTTP_EXPOSE_ADDR="" in production to disable)
     ports:
-      - "${REGISTRY_HTTP_EXPOSE_ADDR}:${REGISTRY_HTTP_ADDR}"  # Expose registry directly on localhost:5000 (only for dev)
+      - "${REGISTRY_HTTP_EXPOSE_ADDR}:5000"  # Expose registry directly on localhost:5000 (only for dev)
     environment:
       # Registry credentials (auto-generate htpasswd)
       REGISTRY_USERNAME: ${REGISTRY_USERNAME}
