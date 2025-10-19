@@ -67,7 +67,7 @@ services:
     image: registry-custom:latest
     container_name: registry
     ports:
-      - "5000:5000"  # Expose registry directly on localhost:5000
+      - "5000:5000"  # Expose registry directly on localhost:5000 (only for dev)
     environment:
       # Registry credentials (auto-generate htpasswd)
       REGISTRY_USERNAME: ${REGISTRY_USERNAME}
@@ -100,7 +100,7 @@ services:
       - "traefik.http.middlewares.registry-cors.headers.accesscontrolexposeheaders=Docker-Content-Digest"
       - "traefik.docker.network=proxy"
 
-  # Optional web UI for the registry
+  # Optional web UI for the registry (only for dev)
   registry-ui:
     image: joxit/docker-registry-ui:latest
     container_name: registry-ui
