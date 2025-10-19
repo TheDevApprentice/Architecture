@@ -13,6 +13,7 @@ services:
     ports:
       - "80:80"
       - "8080:8080" # Un-comment if you want to access the Traefik dashboard from host
+      # - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -66,8 +67,9 @@ services:
       dockerfile: Dockerfile
     image: registry-custom:latest
     container_name: registry
+    # Expose port only in dev mode (comment out in production)
     ports:
-      - "5000:5000"  # Expose registry directly on localhost:5000 (only for dev)
+      - "${REGISTRY_HTTP_EXPOSE_ADDR}:${REGISTRY_HTTP_ADDR}"  # Expose registry directly on localhost:5000 (only for dev)
     environment:
       # Registry credentials (auto-generate htpasswd)
       REGISTRY_USERNAME: ${REGISTRY_USERNAME}
@@ -80,16 +82,16 @@ services:
     labels:
       - "traefik.enable=true"
       # Route -> Docker Registry API (HTTPS in production, HTTP in dev)
-      - "traefik.http.routers.registry.rule=Host(`registry.${HOST}`)"
-      - "traefik.http.routers.registry.entrypoints=web"
-      # Uncomment for HTTPS in production:
-      # - "traefik.http.routers.registry.entrypoints=websecure"
-      # - "traefik.http.routers.registry.tls=true"
-      # - "traefik.http.routers.registry.tls.certresolver=le"
+      - "traefik.http.routers.registry.rule=Host(`${REGISTRY_URL}`)"
+      # Dev: HTTP (web) | Prod: HTTPS (websecure)
+      - "traefik.http.routers.registry.entrypoints=${REGISTRY_ENTRYPOINT}"
+      # TLS configuration (enabled in production via REGISTRY_TLS_ENABLED)
+      - "traefik.http.routers.registry.tls=${REGISTRY_TLS_ENABLED}"
+      - "traefik.http.routers.registry.tls.certresolver=${REGISTRY_TLS_CERTRESOLVER}"
       - "traefik.http.routers.registry.priority=2"
       - "traefik.http.routers.registry.service=registry"
       - "traefik.http.routers.registry.middlewares=registry-cors"
-      - "traefik.http.services.registry.loadbalancer.server.port=5000"
+      - "traefik.http.services.registry.loadbalancer.server.port=${REGISTRY_HTTP_EXPOSE_ADDR}"
       # CORS middleware for Registry UI
       - "traefik.http.middlewares.registry-cors.headers.accesscontrolallowmethods=GET,HEAD,OPTIONS,DELETE"
       - "traefik.http.middlewares.registry-cors.headers.accesscontrolallowheaders=Authorization,Accept,Cache-Control"
@@ -108,9 +110,8 @@ services:
       - REGISTRY_TITLE=Private Registry
       - SINGLE_REGISTRY=true
       - SHOW_CONTENT_DIGEST=true
-      # - NGINX_PROXY_PASS_URL=http://registry:5000
       # If your registry is exposed with TLS via Traefik, set the following URL
-      - REGISTRY_URL=http://registry.${HOST}
+      - REGISTRY_URL=http://${REGISTRY_URL}
       # Enable authentication in UI
       - REGISTRY_SECURED=true
     restart: unless-stopped

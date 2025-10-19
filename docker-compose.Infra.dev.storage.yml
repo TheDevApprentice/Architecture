@@ -36,51 +36,7 @@ services:
       # Network
       - "traefik.docker.network=proxy"
 
-  redis:
-    build:
-      context: ./server/Redis
-      dockerfile: Dockerfile
-    image: redis:latest
-    container_name: redis
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-    networks:
-      - proxy
-      - cachenet
-    restart: unless-stopped
-    # No Traefik labels here: Redis is TCP on 6379 (not HTTP). Keep it internal.
-
-  # LEAVE IT COMMENTED IF YOU DON'T NEED IT
-  # redis-commander:
-  #   image: rediscommander/redis-commander:latest
-  #   restart: unless-stopped
-  #   environment:
-  #     - REDIS_HOSTS=local:redis:6379:0:changeme
-  #     - HTTP_USER=admin
-  #     - HTTP_PASSWORD=secret
-  #     # Make the app aware it is served under /redis-commander
-  #     - URL_PREFIX=/redis-commander
-  #     - HTTP_PATH=/redis-commander
-  #   labels:
-  #     - "traefik.enable=true"
-  #     # Route /redis-commander -> Redis Commander Web UI (HTTP)
-  #     - "traefik.http.routers.rediscommander.rule=PathPrefix(`/redis-commander`)"
-  #     - "traefik.http.routers.rediscommander.entrypoints=web"
-  #     - "traefik.http.routers.rediscommander.service=rediscommander"
-  #     # Ensure "/redis-commander" (without trailing slash) redirects to "/redis-commander/"
-  #     - "traefik.http.routers.rediscommander.middlewares=rediscommander-slash"
-  #     - "traefik.http.middlewares.rediscommander-slash.redirectregex.regex=^/redis-commander$"
-  #     - "traefik.http.middlewares.rediscommander-slash.redirectregex.replacement=/redis-commander/"
-  #     - "traefik.http.services.rediscommander.loadbalancer.server.port=8081"
-  #     - "traefik.docker.network=proxy"
-  #   networks:
-  #     - cachenet
-  #     - proxy
-
 volumes:
-  redis_data:
   minio_data:
 
 networks:
